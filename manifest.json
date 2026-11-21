@@ -1,7 +1,6 @@
 {
   "name": "Kontrola Parkovania",
   "short_name": "Parkovanie",
-  "description": "Kontrola povolených ŠPZ pomocou kamery",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8fafc",

@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Parkovanie">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-512.png">
-    <link rel="icon" type="image/png" href="icon-512.png">
     <title>Kontrola Parkovania</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
@@ -32,12 +29,13 @@
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
         
-        .camera-box { position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px; }
+        .camera-box { position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 70px; border: 3px solid #38bdf8; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; }
         .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; }
+        #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.2s; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-outline { background: white; border: 1px solid #cbd5e1; color: var(--text); }
@@ -48,7 +46,7 @@
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 20px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; animation: fadeIn 0.2s; }
+        #result-banner { display: none; padding: 20px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
         #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; }
@@ -57,8 +55,6 @@
         .plate-badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 1.1rem; }
         .meta { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -73,7 +69,8 @@
     </div>
 
     <div class="camera-box">
-        <video id="video" autoplay playsinline></video>
+        <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
+        <video id="video" autoplay playsinline muted></video>
         <div class="scan-frame"></div>
         <div class="scan-hint">Umiestni ŠPZ do modrého rámčeka</div>
     </div>
@@ -98,7 +95,7 @@
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 15px 0;">
         
         <h4 style="margin: 0 0 8px 0;">Hromadný import z Excelu (CSV)</h4>
-        <p style="font-size: 0.8rem; color: #64748b; margin-top: 0;">Formát v súbore: <b>SPZ;Meno alebo firma</b> (každé auto na nový riadok)</p>
+        <p style="font-size: 0.8rem; color: #64748b; margin-top: 0;">Formát v súbore: <b>SPZ;Meno alebo firma</b></p>
         <input type="file" id="csv-file" accept=".csv,.txt" style="font-size: 0.9rem; margin-bottom: 8px;">
         <button class="btn btn-outline" onclick="importCSV()">Nahrať CSV súbor</button>
     </div>
@@ -129,44 +126,50 @@
 <script>
     let allowedCars = JSON.parse(localStorage.getItem('park_db')) || [];
     let scanHistory = JSON.parse(localStorage.getItem('park_history')) || [];
-    let stream = null;
 
     async function startCamera() {
+        const startBtn = document.getElementById('cam-start-btn');
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
             });
-            document.getElementById('video').srcObject = stream;
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            startBtn.style.display = 'none';
         } catch (err) {
-            alert("Nepodarilo sa spustiť kameru. Povoľ prístup ku kamere v nastaveniach prehliadača (vyžaduje HTTPS).");
+            alert("Chyba kamery: " + err.name + ". Povoľ kameru v nastaveniach prehliadača (ikona vedľa adresy stránky).");
         }
     }
 
     function playBeep(isSuccess) {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
 
-        if (isSuccess) {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.15);
-        } else {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(220, ctx.currentTime);
-            osc.frequency.setValueAtTime(180, ctx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.8, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-        }
+            if (isSuccess) {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, ctx.currentTime);
+                osc.frequency.setValueAtTime(180, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.8, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            }
+        } catch (e) {}
     }
 
     function cleanPlate(text) {
-        return text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return String(text).toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
     async function scanPlate() {
@@ -174,7 +177,10 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         
-        if (!video.videoWidth) return alert("Kamera nie je pripravená.");
+        if (!video.videoWidth) {
+            startCamera();
+            return alert("Najprv zapni kameru.");
+        }
 
         btn.disabled = true;
         btn.innerText = "⏳ Čítam značku...";
@@ -197,10 +203,10 @@
             if (detected.length >= 4) {
                 verifyPlate(detected);
             } else {
-                alert("Značku sa nepodarilo prečítať. Priblíž mobil alebo ju zadaj ručne.");
+                alert("Značku sa nepodarilo prečítať (" + detected + "). Priblíž mobil alebo ju zadaj ručne.");
             }
         } catch (e) {
-            alert("Chyba pri rozpoznávaní textu.");
+            alert("Chyba pri rozpoznávaní textu: " + e.message);
         }
 
         btn.disabled = false;
@@ -233,7 +239,6 @@
             statusEl.innerText = '✅ POVOLENÉ PARKOVANIE';
             ownerEl.innerText = match.owner ? `Majiteľ: ${match.owner}` : 'Bez poznámky';
             playBeep(true);
-            
             scanHistory.unshift({ plate, status: 'OK', owner: match.owner || '-', time: dateTimeStr });
         } else {
             banner.className = 'fail';
@@ -241,7 +246,6 @@
             ownerEl.innerText = 'Auto sa nenachádza v databáze';
             playBeep(false);
             if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
-            
             scanHistory.unshift({ plate, status: 'NEPOVOLENÉ', owner: '-', time: dateTimeStr });
         }
 
@@ -270,8 +274,7 @@
 
         const reader = new FileReader();
         reader.onload = function(e) {
-            const lines = e.target.result.split(/?
-/);
+            const lines = e.target.result.split(/\r?\n/);
             let added = 0;
             lines.forEach(line => {
                 if (!line.trim()) return;
@@ -338,11 +341,9 @@
 
     function exportHistoryCSV() {
         if (scanHistory.length === 0) return alert("História je prázdna.");
-        let csv = "﻿Datum a cas;SPZ;Vysledok;Majitel
-";
+        let csv = "\uFEFFDatum a cas;SPZ;Vysledok;Majitel\n";
         scanHistory.forEach(r => {
-            csv += `${r.time};${r.plate};${r.status};${r.owner}
-`;
+            csv += `${r.time};${r.plate};${r.status};${r.owner}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -370,8 +371,10 @@
         if (tabId === 'history') renderHistory();
     }
 
-    startCamera();
-    saveAndRenderDB();
+    window.addEventListener('load', () => {
+        saveAndRenderDB();
+        startCamera();
+    });
 </script>
 </body>
 </html>
