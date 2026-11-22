@@ -22,90 +22,88 @@
         }
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; padding: 0; background: var(--bg); color: var(--text); padding-bottom: 75px; }
-        
-        /* Prihlasovacia obrazovka */
-        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: white; padding: 28px 22px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 360px; text-align: center; }
-        .login-icon { font-size: 2.5rem; margin-bottom: 10px; }
-        .login-input { width: 100%; padding: 13px; border: 2px solid #cbd5e1; border-radius: 10px; font-size: 1.05rem; margin-bottom: 12px; outline: none; }
-        .login-input:focus { border-color: var(--primary); }
-        #login-error { color: var(--danger); font-size: 0.9rem; margin-bottom: 10px; display: none; font-weight: 600; }
-
-        header { background: var(--primary); color: white; padding: 14px 15px; font-weight: bold; font-size: 1.1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+        header { background: var(--primary); color: white; padding: 12px 15px; font-weight: bold; font-size: 1.05rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
         .header-left { display: flex; align-items: center; gap: 8px; }
-        .ver-badge { font-size: 0.7rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 6px; font-weight: normal; }
+        .version-tag { font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 2px 7px; border-radius: 6px; font-weight: normal; }
         .header-right { display: flex; align-items: center; gap: 6px; }
         .sync-badge { font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; }
-        .lock-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-        
+        .lock-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 9px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+
+        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .login-box { background: white; padding: 26px 22px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 350px; text-align: center; }
+        .login-box input { width: 100%; padding: 13px; border: 2px solid #cbd5e1; border-radius: 10px; font-size: 1.05rem; margin-bottom: 12px; }
+        .login-box input:focus { outline: none; border-color: var(--primary); }
+
         nav { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; border-top: 1px solid #cbd5e1; z-index: 10; }
-        nav button { flex: 1; padding: 10px 4px; border: none; background: none; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        nav button { flex: 1; padding: 11px 4px; border: none; background: none; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
         nav button.active { color: var(--primary); border-top: 3px solid var(--primary); }
-        
+
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
-        
-        .camera-box { position: relative; width: 100%; height: 280px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
+
+        .camera-box { position: relative; width: 100%; height: 270px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
         .camera-box.tall { height: 320px; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
         .scan-frame.tall { height: 136px; }
-        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; padding: 0 10px; }
-        #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-        
-        .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; }
-        .mode-btn { flex: 1; padding: 8px 6px; border: 1px solid #cbd5e1; background: white; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #475569; cursor: pointer; }
-        .mode-btn.active { background: #eff6ff; border-color: var(--primary); color: var(--primary); }
+        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
+        #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+
+        .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
+        .mode-switch button { flex: 1; padding: 8px 4px; border: none; border-radius: 7px; font-size: 0.8rem; font-weight: 600; background: transparent; color: #475569; cursor: pointer; }
+        .mode-switch button.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-export { background: var(--export); color: white; }
         .btn-outline { background: white; border: 1px solid #cbd5e1; color: var(--text); }
-        .btn-danger { background: var(--danger); color: white; padding: 6px 10px; font-size: 0.8rem; width: auto; margin: 0; flex-shrink: 0; }
-        
+        .btn-danger { background: var(--danger); color: white; padding: 8px 12px; font-size: 0.82rem; width: auto; margin: 0; flex-shrink: 0; }
+
         input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; margin-bottom: 10px; background: white; }
         .manual-check { display: flex; gap: 8px; margin-top: 10px; }
-        .manual-check input { margin-bottom: 0; font-weight: bold; }
+        .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
         #result-banner { display: none; padding: 18px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
         #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; word-break: break-all; }
-        
+
         .card { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .card-info { min-width: 0; flex: 1; overflow-wrap: break-word; }
         .plate-badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 1.1rem; display: inline-block; }
-        .role-badge { background: #dbeafe; color: #1e40af; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 0.78rem; margin-left: 6px; }
-        .role-badge.admin { background: #fef3c7; color: #92400e; }
+        .role-badge { padding: 3px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: bold; margin-left: 6px; }
+        .role-A { background: #dbeafe; color: #1d4ed8; }
+        .role-U { background: #f1f5f9; color: #475569; }
         .meta { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
         .section-box { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+        .admin-only { display: none; }
     </style>
 </head>
 <body>
 
 <div id="login-screen">
-    <div class="login-card">
-        <div class="login-icon">🅿️</div>
-        <h2 style="margin: 0 0 18px 0;">Kontrola Parkovania</h2>
-        <input type="text" id="login-name" class="login-input" placeholder="Meno" autocomplete="off" onkeydown="if(event.key==='Enter') document.getElementById('login-pass').focus()">
-        <input type="password" id="login-pass" class="login-input" placeholder="Heslo" inputmode="numeric" onkeydown="if(event.key==='Enter') checkLogin()">
-        <div id="login-error">Nesprávne meno alebo heslo</div>
-        <button class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
-        <div style="margin-top: 14px; font-size: 0.75rem; color: #94a3b8;">Verzia v1.17</div>
+    <div class="login-box">
+        <div style="font-size: 2.4rem; margin-bottom: 6px;">🅿️</div>
+        <h2 style="margin: 0 0 16px 0; font-size: 1.3rem;">Kontrola Parkovania</h2>
+        <input type="text" id="login-name" placeholder="Meno" autocomplete="username" onkeydown="if(event.key==='Enter') document.getElementById('login-pass').focus()">
+        <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password" onkeydown="if(event.key==='Enter') checkLogin()">
+        <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
+        <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.18</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="ver-badge">v1.17</span>
+        <span class="version-tag">v1.18</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
-        <button class="lock-btn" onclick="logoutApp()" title="Odhlásiť sa">🔒</button>
+        <button class="lock-btn" onclick="logoutApp()" title="Odhlásiť">🔒</button>
     </div>
 </header>
 
@@ -120,23 +118,23 @@
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
         <div class="scan-frame" id="scan-frame"></div>
-        <div class="scan-hint">Umiestni ŠPZ do modrého rámika</div>
+        <div class="scan-hint" id="scan-hint">Umiestni ŠPZ do modrého rámika</div>
     </div>
 
     <div class="mode-switch">
-        <button id="mode-sharp" class="mode-btn active" onclick="setOcrMode('sharp')">⚡ Ostrý (Denný)</button>
-        <button id="mode-soft" class="mode-btn" onclick="setOcrMode('soft')">🌗 Tieň / Odlesk</button>
+        <button id="frame-1" class="active" onclick="setFrameSize(false)">▭ 1 riadok</button>
+        <button id="frame-2" onclick="setFrameSize(true)">▢ 2 riadky</button>
     </div>
 
     <div class="mode-switch">
-        <button id="frame-1line" class="mode-btn active" onclick="setFrameMode('1line')">▭ Rámik: 1 riadok</button>
-        <button id="frame-2line" class="mode-btn" onclick="setFrameMode('2line')">▢ Rámik: 2 riadky</button>
+        <button id="mode-sharp" class="active" onclick="setScanMode('sharp')">⚡ Ostrý (Denný)</button>
+        <button id="mode-soft" onclick="setScanMode('soft')">🌗 Tieň / Odlesk</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate()">📸 Odfotiť a overiť ŠPZ</button>
-    
+
     <div style="text-align: center; color: #64748b; font-size: 0.85rem; margin: 10px 0;">— alebo zadaj ručne (napr. pri špinavej značke) —</div>
-    
+
     <div class="manual-check">
         <input type="text" id="manual-plate" placeholder="Napr. NR123AB" maxlength="10" oninput="this.value = this.value.toUpperCase()">
         <button class="btn btn-success" onclick="manualVerify()">Overiť</button>
@@ -146,60 +144,59 @@
 <div id="tab-db" class="tab">
     <div class="section-box">
         <h3 style="margin-top:0;">1. Pridať jedno auto (do cloudu)</h3>
-        <input type="text" id="new-plate" placeholder="ŠPZ (napr. BA999XX)" oninput="this.value = this.value.toUpperCase()">
+        <input type="text" id="new-plate" placeholder="ŠPZ (napr. BA999XX)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
         <input type="text" id="new-owner" placeholder="Meno majiteľa / Firma / Poznámka">
         <button class="btn btn-primary" onclick="addCar()">+ Uložiť pre všetky mobily</button>
     </div>
 
     <div class="section-box">
         <h3 style="margin-top:0;">2. Vloženie zoznamu zo súboru</h3>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber stiahnutý <b>.csv</b> alebo <b>.txt</b> súbor (formát: <code>SPZ;Meno</code>).</p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber <b>.csv</b> súbor z pamäte zariadenia (formát: <code>SPZ;Meno</code>).</p>
         <input type="file" id="csv-file" accept=".csv,.txt,text/csv,text/plain" style="font-size: 0.9rem; margin-bottom: 10px; width: 100%;">
         <button class="btn btn-outline" onclick="importCSV()">📂 Nahrať vybraný súbor</button>
     </div>
 
     <div class="section-box">
         <h3 style="margin-top:0;">3. Rýchle vloženie zoznamu</h3>
-        <textarea id="bulk-text" rows="4" placeholder="NR123AB;Ján Novák
-BA456CD;Firma ABC"></textarea>
+        <textarea id="bulk-text" rows="3" placeholder="NR123AB;Ján Novák&#10;BA456CD;Firma ABC"></textarea>
         <button class="btn btn-outline" onclick="importBulkText()">📋 Uložiť vložený zoznam</button>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <strong>Povolené autá (<span id="db-count">0</span>)</strong>
-        <button id="btn-clear-db" class="btn btn-danger" onclick="clearDB()">🔒 Vymazať všetko</button>
+        <button class="btn btn-danger admin-only" onclick="clearDB()">🔒 Vymazať všetko</button>
     </div>
     <div id="db-list"></div>
 </div>
 
 <div id="tab-history" class="tab">
-    <div class="section-box" style="padding: 12px 15px;">
-        <div style="font-size: 0.9rem; margin-bottom: 8px;">Prihlásený užívateľ: <strong id="current-user-label">—</strong></div>
-        <div id="change-pass-box">
-            <label style="font-size: 0.8rem; color: #64748b; display:block; margin-bottom:6px;">Zmena vlastného hesla:</label>
-            <div style="display:flex; gap:6px;">
-                <input type="password" id="old-pass" placeholder="Staré heslo" style="margin:0; padding:8px; font-size:0.9rem;">
-                <input type="password" id="new-pass" placeholder="Nové heslo" style="margin:0; padding:8px; font-size:0.9rem;">
-                <button class="btn btn-primary" style="width:auto; margin:0; padding:8px 14px; font-size:0.9rem;" onclick="changeOwnPassword()">Zmeniť</button>
+    <div class="section-box">
+        <div style="font-size: 0.9rem; margin-bottom: 10px;">Prihlásený užívateľ: <strong id="current-user-label">—</strong></div>
+        <details>
+            <summary style="cursor:pointer; color: var(--primary); font-weight: 600; font-size: 0.9rem;">🔑 Zmeniť moje heslo</summary>
+            <div style="margin-top: 10px;">
+                <input type="password" id="old-pass" inputmode="numeric" placeholder="Aktuálne heslo">
+                <input type="password" id="new-pass" inputmode="numeric" placeholder="Nové heslo">
+                <button class="btn btn-primary" style="margin-bottom:0;" onclick="changeOwnPassword()">Uložiť nové heslo</button>
             </div>
-        </div>
+        </details>
     </div>
 
     <div style="display:flex; gap:8px; margin-bottom:15px;">
-        <button class="btn btn-export" style="margin:0;" onclick="exportCSV()">📥 Stiahnuť históriu do Excelu (CSV)</button>
-        <button id="btn-clear-history" class="btn btn-danger" onclick="clearHistory()">🔒 Zmazať</button>
+        <button class="btn btn-export" style="margin:0; flex:1;" onclick="exportCSV()">📥 Stiahnuť históriu do Excelu (CSV)</button>
+        <button id="btn-clear-history" class="btn btn-danger admin-only" onclick="clearHistory()">🔒 Zmazať históriu</button>
     </div>
     <div id="history-list"></div>
 </div>
 
 <div id="tab-users" class="tab">
     <div class="section-box">
-        <h3 style="margin-top:0;">Pridať alebo upraviť užívateľa</h3>
+        <h3 style="margin-top:0;">Pridať / upraviť užívateľa</h3>
         <input type="text" id="user-name" placeholder="Meno užívateľa (napr. Jozef)">
-        <input type="password" id="user-pass" placeholder="Heslo">
+        <input type="password" id="user-pass" inputmode="numeric" placeholder="Heslo">
         <select id="user-role">
-            <option value="U">U - Užívateľ (skenovanie a správa áut)</option>
-            <option value="A">A - Admin (plný prístup a správa užívateľov)</option>
+            <option value="U">U – Užívateľ (skenovanie a správa áut)</option>
+            <option value="A">A – Admin (plné práva + správa užívateľov)</option>
         </select>
         <button class="btn btn-primary" onclick="saveUser()">+ Uložiť užívateľa</button>
     </div>
@@ -214,7 +211,7 @@ BA456CD;Firma ABC"></textarea>
     <button class="active" onclick="switchTab('scan', this)"><span>📷</span>Skener</button>
     <button onclick="switchTab('db', this)"><span>🚗</span>Povolené</button>
     <button onclick="switchTab('history', this)"><span>📋</span>História</button>
-    <button id="nav-users" style="display:none;" onclick="switchTab('users', this)"><span>👤</span>Užívatelia</button>
+    <button id="nav-users" class="admin-only" onclick="switchTab('users', this)"><span>👤</span>Užívatelia</button>
 </nav>
 
 <canvas id="canvas" style="display:none;"></canvas>
@@ -229,7 +226,7 @@ BA456CD;Firma ABC"></textarea>
         appId: "1:974462279794:web:649e27e3e07dbd1b6de2eb"
     };
 
-    const SUPERADMIN_NAME = "admin";
+    const SUPERADMIN_USER = "admin";
     const SUPERADMIN_PASS = "1719";
 
     let db = null;
@@ -237,11 +234,11 @@ BA456CD;Firma ABC"></textarea>
     let scanHistory = [];
     let appUsers = [];
     let currentUser = null;
-    let ocrMode = 'sharp';
-    let frameMode = '1line';
+    let scanMode = 'sharp';
+    let isTallFrame = false;
 
     function normalizeName(str) {
-        return (str || '').trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+        return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
 
     try {
@@ -272,62 +269,148 @@ BA456CD;Firma ABC"></textarea>
         updateSyncStatus(false, e.message);
     }
 
-    function checkLogin() {
+    const savedSession = sessionStorage.getItem('park_user_v118');
+    if (savedSession) {
+        try {
+            currentUser = JSON.parse(savedSession);
+            applyUserSession();
+        } catch (e) {}
+    }
+
+    async function checkLogin() {
         const rawName = document.getElementById('login-name').value.trim();
         const pass = document.getElementById('login-pass').value.trim();
-        const norm = normalizeName(rawName);
         const errEl = document.getElementById('login-error');
+        const btn = document.getElementById('login-btn');
+        const norm = normalizeName(rawName);
 
         if (!norm || !pass) {
-            errEl.style.display = 'block';
+            errEl.textContent = 'Zadaj meno aj heslo.';
             return;
         }
 
-        if (norm === SUPERADMIN_NAME && pass === SUPERADMIN_PASS) {
-            loginSuccess({ id: SUPERADMIN_NAME, name: 'admin', pass: SUPERADMIN_PASS, role: 'A', isSuper: true });
+        if (norm === SUPERADMIN_USER && pass === SUPERADMIN_PASS) {
+            currentUser = { id: 'admin', name: 'admin', pass: SUPERADMIN_PASS, role: 'A', isSuper: true };
+            finishLogin();
             return;
         }
 
-        const foundUser = appUsers.find(u => normalizeName(u.name) === norm && u.pass === pass);
-        if (foundUser) {
-            loginSuccess(foundUser);
-        } else {
-            errEl.style.display = 'block';
-            document.getElementById('login-pass').value = '';
+        btn.disabled = true;
+        errEl.textContent = 'Overujem...';
+
+        try {
+            let found = appUsers.find(u => (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass);
+            if (!found && db) {
+                const snap = await db.collection('app_users').get();
+                appUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                found = appUsers.find(u => (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass);
+            }
+
+            if (found) {
+                currentUser = { id: found.id, name: found.name, pass: String(found.pass), role: found.role || 'U', isSuper: false };
+                finishLogin();
+            } else {
+                errEl.textContent = 'Nesprávne meno alebo heslo.';
+                document.getElementById('login-pass').value = '';
+            }
+        } catch (e) {
+            errEl.textContent = 'Chyba spojenia s databázou.';
+        } finally {
+            btn.disabled = false;
         }
     }
 
-    function loginSuccess(user) {
-        currentUser = user;
-        document.getElementById('login-error').style.display = 'none';
-        document.getElementById('login-name').value = '';
-        document.getElementById('login-pass').value = '';
-        document.getElementById('login-screen').style.display = 'none';
+    function finishLogin() {
+        document.getElementById('login-error').textContent = '';
+        sessionStorage.setItem('park_user_v118', JSON.stringify(currentUser));
+        applyUserSession();
+    }
 
-        document.getElementById('current-user-label').textContent = `${user.name} (${user.role})`;
-        const isAdmin = user.role === 'A';
-        document.getElementById('nav-users').style.display = isAdmin ? 'flex' : 'none';
-        document.getElementById('btn-clear-db').style.display = isAdmin ? 'inline-block' : 'none';
-        document.getElementById('btn-clear-history').style.display = isAdmin ? 'inline-block' : 'none';
-        document.getElementById('change-pass-box').style.display = user.isSuper ? 'none' : 'block';
+    function applyUserSession() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('current-user-label').textContent = `${currentUser.name} (${currentUser.role})`;
+        const isAdmin = currentUser.role === 'A';
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = isAdmin ? (el.tagName === 'BUTTON' ? 'flex' : 'block') : 'none';
+        });
+        const clearHistBtn = document.getElementById('btn-clear-history');
+        if (clearHistBtn) clearHistBtn.style.display = isAdmin ? 'inline-block' : 'none';
+        renderDB();
+        renderUsers();
     }
 
     function logoutApp() {
+        sessionStorage.removeItem('park_user_v118');
         currentUser = null;
-        switchTab('scan', document.querySelector('nav button'));
+        document.getElementById('login-name').value = '';
+        document.getElementById('login-pass').value = '';
+        document.getElementById('login-error').textContent = '';
         document.getElementById('login-screen').style.display = 'flex';
+        switchTab('scan', document.querySelector('nav button'));
     }
 
-    function verifyActionPassword() {
-        if (!currentUser) return false;
-        const entered = prompt('Pre potvrdenie zadaj svoje heslo:');
-        if (entered === null) return false;
-        const clean = entered.trim();
-        if (clean === currentUser.pass || clean === SUPERADMIN_PASS) {
-            return true;
+    async function saveUser() {
+        if (!currentUser || currentUser.role !== 'A') return;
+        const name = document.getElementById('user-name').value.trim();
+        const pass = document.getElementById('user-pass').value.trim();
+        const role = document.getElementById('user-role').value;
+        const norm = normalizeName(name);
+
+        if (!norm || norm === SUPERADMIN_USER) return alert('Zadaj platné meno (meno admin je vyhradené).');
+        if (pass.length < 3) return alert('Heslo musí mať aspoň 3 znaky.');
+
+        await db.collection('app_users').doc(norm).set({
+            name: name,
+            pass: pass,
+            role: role
+        });
+        document.getElementById('user-name').value = '';
+        document.getElementById('user-pass').value = '';
+        alert('Užívateľ uložený: ' + name);
+    }
+
+    async function removeUser(encodedId, encodedName) {
+        if (!currentUser || currentUser.role !== 'A') return;
+        const id = decodeURIComponent(encodedId);
+        const name = decodeURIComponent(encodedName);
+        const p = prompt('Zadaj svoje heslo pre potvrdenie zmazania:');
+        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
+        if (confirm('Zmazať užívateľa ' + name + '?')) {
+            await db.collection('app_users').doc(id).delete();
         }
-        alert('Nesprávne heslo.');
-        return false;
+    }
+
+    function renderUsers() {
+        const list = document.getElementById('users-list');
+        const countEl = document.getElementById('users-count');
+        if (!list) return;
+        const visibleUsers = appUsers.filter(u => u.id !== SUPERADMIN_USER);
+        countEl.textContent = visibleUsers.length;
+        list.innerHTML = visibleUsers.map(u => `
+            <div class="card">
+                <div class="card-info">
+                    <strong>${escapeHtml(u.name)}</strong>
+                    <span class="role-badge role-${u.role}">${u.role === 'A' ? 'A (Admin)' : 'U (User)'}</span>
+                </div>
+                <button class="btn btn-danger" onclick="removeUser('${encodeURIComponent(u.id)}', '${encodeURIComponent(u.name)}')">🔒 Zmazať</button>
+            </div>
+        `).join('');
+    }
+
+    async function changeOwnPassword() {
+        if (!currentUser) return;
+        if (currentUser.isSuper) return alert('Heslo účtu admin sa mení iba v zdrojovom kóde.');
+        const oldP = document.getElementById('old-pass').value.trim();
+        const newP = document.getElementById('new-pass').value.trim();
+        if (oldP !== currentUser.pass) return alert('Aktuálne heslo nie je správne.');
+        if (newP.length < 3) return alert('Nové heslo musí mať aspoň 3 znaky.');
+
+        await db.collection('app_users').doc(currentUser.id).update({ pass: newP });
+        currentUser.pass = newP;
+        sessionStorage.setItem('park_user_v118', JSON.stringify(currentUser));
+        document.getElementById('old-pass').value = '';
+        document.getElementById('new-pass').value = '';
+        alert('Heslo bolo úspešne zmenené.');
     }
 
     function updateSyncStatus(ok, errMsg = '') {
@@ -343,45 +426,45 @@ BA456CD;Firma ABC"></textarea>
     }
 
     function normalizePlate(str) {
-        return (str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
-    function cleanSlovakPlate(raw) {
-        let s = normalizePlate(raw);
-        if (s.startsWith('SK') && s.length >= 7) {
-            s = s.substring(2);
+    function cleanSlovakPlate(rawText) {
+        let lines = rawText.split(/\r?\n/).map(l => normalizePlate(l)).filter(l => l.length >= 4);
+        let text = lines.length ? lines.reduce((a, b) => a.length >= b.length ? a : b) : normalizePlate(rawText);
+
+        if (text.startsWith('SK') && text.length >= 7) text = text.substring(2);
+        if (text.length === 8 && (text.startsWith('I') || text.startsWith('1') || text.startsWith('L'))) {
+            text = text.substring(1);
         }
-        if (s.length > 7) {
-            const match = s.match(/[A-Z]{2}[0-9OIZSBG]{3}[A-Z0-9]{2}/);
-            if (match) s = match[0];
+        if (text.length > 7) text = text.substring(0, 7);
+
+        if (text.length === 7) {
+            const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B', '6': 'G' };
+            const toDigit  = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6' };
+            let chars = text.split('');
+            [0, 1, 5, 6].forEach(idx => { if (toLetter[chars[idx]]) chars[idx] = toLetter[chars[idx]]; });
+            [2, 3, 4].forEach(idx => { if (toDigit[chars[idx]]) chars[idx] = toDigit[chars[idx]]; });
+            text = chars.join('');
         }
-        if (s.length === 7) {
-            const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '6': 'G', '8': 'B' };
-            const toDigit  = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'G': '6', 'B': '8' };
-            let chars = s.split('');
-            for (let i of [0, 1, 5, 6]) {
-                if (toLetter[chars[i]]) chars[i] = toLetter[chars[i]];
-            }
-            for (let i of [2, 3, 4]) {
-                if (toDigit[chars[i]]) chars[i] = toDigit[chars[i]];
-            }
-            s = chars.join('');
-        }
-        return s;
+        return text;
     }
 
-    function setOcrMode(mode) {
-        ocrMode = mode;
+    function setFrameSize(tall) {
+        isTallFrame = tall;
+        document.getElementById('camera-box').classList.toggle('tall', tall);
+        document.getElementById('scan-frame').classList.toggle('tall', tall);
+        document.getElementById('frame-1').classList.toggle('active', !tall);
+        document.getElementById('frame-2').classList.toggle('active', tall);
+        document.getElementById('scan-hint').textContent = tall
+            ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
+            : 'Umiestni ŠPZ do modrého rámika';
+    }
+
+    function setScanMode(mode) {
+        scanMode = mode;
         document.getElementById('mode-sharp').classList.toggle('active', mode === 'sharp');
         document.getElementById('mode-soft').classList.toggle('active', mode === 'soft');
-    }
-
-    function setFrameMode(mode) {
-        frameMode = mode;
-        document.getElementById('frame-1line').classList.toggle('active', mode === '1line');
-        document.getElementById('frame-2line').classList.toggle('active', mode === '2line');
-        document.getElementById('camera-box').classList.toggle('tall', mode === '2line');
-        document.getElementById('scan-frame').classList.toggle('tall', mode === '2line');
     }
 
     function switchTab(tabName, btn) {
@@ -422,84 +505,63 @@ BA456CD;Firma ABC"></textarea>
         btn.disabled = true;
         btn.textContent = '⏳ Čítam ŠPZ...';
 
+        const canvas = document.getElementById('canvas');
         const vw = video.videoWidth;
         const vh = video.videoHeight;
+
         const box = document.getElementById('camera-box');
-        const frame = document.getElementById('scan-frame');
-        const boxRect = box.getBoundingClientRect();
-        const frameRect = frame.getBoundingClientRect();
+        const cw = box.clientWidth;
+        const ch = box.clientHeight;
+        const scale = Math.max(cw / vw, ch / vh);
+        const visW = cw / scale;
+        const visH = ch / scale;
+        const offX = (vw - visW) / 2;
+        const offY = (vh - visH) / 2;
 
-        const videoRatio = vw / vh;
-        const boxRatio = boxRect.width / boxRect.height;
-        let renderW, renderH, offsetX, offsetY;
-        if (videoRatio > boxRatio) {
-            renderH = boxRect.height;
-            renderW = renderH * videoRatio;
-            offsetX = (renderW - boxRect.width) / 2;
-            offsetY = 0;
-        } else {
-            renderW = boxRect.width;
-            renderH = renderW / videoRatio;
-            offsetX = 0;
-            offsetY = (renderH - boxRect.height) / 2;
-        }
+        const frameW = visW * 0.84;
+        const frameH = visH * (isTallFrame ? 0.42 : 0.28);
+        const cropX = offX + (visW - frameW) / 2;
+        const cropY = offY + (visH - frameH) / 2;
 
-        const scaleX = vw / renderW;
-        const scaleY = vh / renderH;
-        const relLeft = (frameRect.left - boxRect.left) + offsetX;
-        const relTop = (frameRect.top - boxRect.top) + offsetY;
-
-        const padX = frameRect.width * 0.04;
-        const padY = frameRect.height * 0.06;
-
-        const cropX = Math.max(0, (relLeft + padX) * scaleX);
-        const cropY = Math.max(0, (relTop + padY) * scaleY);
-        const cropW = Math.min(vw - cropX, (frameRect.width - 2 * padX) * scaleX);
-        const cropH = Math.min(vh - cropY, (frameRect.height - 2 * padY) * scaleY);
-
-        const canvas = document.getElementById('canvas');
         const zoom = 2;
-        canvas.width = cropW * zoom;
-        canvas.height = cropH * zoom;
+        canvas.width = frameW * zoom;
+        canvas.height = frameH * zoom;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, canvas.width, canvas.height);
 
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const d = imgData.data;
 
-        if (ocrMode === 'sharp') {
+        if (scanMode === 'sharp') {
             let sum = 0;
-            const grays = new Uint8Array(d.length / 4);
-            for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-                const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                grays[j] = g;
-                sum += g;
+            for (let i = 0; i < d.length; i += 4) {
+                sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
             }
-            const threshold = (sum / grays.length) * 0.88;
-            for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-                const val = grays[j] < threshold ? 0 : 255;
+            const avg = sum / (d.length / 4);
+            const threshold = avg * 0.86;
+            for (let i = 0; i < d.length; i += 4) {
+                const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const val = gray > threshold ? 255 : 0;
                 d[i] = d[i + 1] = d[i + 2] = val;
             }
         } else {
-            let minG = 255, maxG = 0;
-            const grays = new Uint8Array(d.length / 4);
-            for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+            let min = 255, max = 0;
+            for (let i = 0; i < d.length; i += 4) {
                 const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                grays[j] = g;
-                if (g < minG) minG = g;
-                if (g > maxG) maxG = g;
+                if (g < min) min = g;
+                if (g > max) max = g;
             }
-            const range = Math.max(1, maxG - minG);
-            for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-                const val = ((grays[j] - minG) / range) * 255;
-                d[i] = d[i + 1] = d[i + 2] = val;
+            const range = (max - min) || 1;
+            for (let i = 0; i < d.length; i += 4) {
+                const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const stretched = ((g - min) / range) * 255;
+                d[i] = d[i + 1] = d[i + 2] = stretched;
             }
         }
         ctx.putImageData(imgData, 0, 0);
 
-        const psmMode = (frameMode === '2line' || ocrMode === 'soft') ? '6' : '7';
-
         try {
+            const psmMode = (!isTallFrame && scanMode === 'sharp') ? '7' : '6';
             const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
                 tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
                 tessedit_pageseg_mode: psmMode
@@ -508,7 +570,7 @@ BA456CD;Firma ABC"></textarea>
             if (plate.length >= 4) {
                 verifyAndLog(plate);
             } else {
-                alert('ŠPZ sa nepodarilo prečítať. Skús prepnúť režim pod kamerou alebo zadaj ručne.');
+                alert('ŠPZ sa nepodarilo prečítať. Skús prepnúť režim (Tieň/Odlesk) alebo zadaj ručne.');
             }
         } catch (e) {
             alert('Chyba pri čítaní: ' + e.message);
@@ -547,20 +609,18 @@ BA456CD;Firma ABC"></textarea>
         }
 
         const userLabel = currentUser ? `${currentUser.name} (${currentUser.role})` : 'Neznámy';
-
         if (db) {
             await db.collection('scan_history').add({
                 plate: plate,
                 allowed: !!found,
                 owner: found ? (found.owner || '') : 'Nepovolené',
-                user: userLabel,
+                device: userLabel,
                 timeStr: new Date().toLocaleString('sk-SK'),
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
     }
 
-    // Správa databázy vozidiel
     async function addCar() {
         const plate = normalizePlate(document.getElementById('new-plate').value);
         const owner = document.getElementById('new-owner').value.trim();
@@ -571,9 +631,13 @@ BA456CD;Firma ABC"></textarea>
         document.getElementById('new-owner').value = '';
     }
 
-    async function removeCarEncoded(encodedPlate) {
+    async function removeCar(encodedPlate) {
         const plate = decodeURIComponent(encodedPlate);
-        if (!verifyActionPassword()) return;
+        const p = prompt('Zadaj svoje heslo pre zmazanie auta ' + plate + ':');
+        if (!p) return;
+        if (!currentUser || (p !== currentUser.pass && p !== SUPERADMIN_PASS)) {
+            return alert('Nesprávne heslo.');
+        }
         if (confirm('Naozaj odstrániť ' + plate + ' zo zoznamu?')) {
             await db.collection('allowed_cars').doc(plate).delete();
         }
@@ -581,7 +645,7 @@ BA456CD;Firma ABC"></textarea>
 
     async function parseAndUploadLines(text) {
         const lines = text.split(/\r?\n/);
-        const records = [];
+        const items = [];
 
         lines.forEach(line => {
             const clean = line.trim();
@@ -590,26 +654,22 @@ BA456CD;Firma ABC"></textarea>
             const plate = normalizePlate(parts[0] || '');
             const owner = parts.slice(1).join(' ').trim();
             if (plate.length >= 3 && plate !== 'SPZ') {
-                records.push({ plate, owner });
+                items.push({ plate, owner });
             }
         });
 
-        if (records.length === 0) {
+        if (items.length > 0) {
+            for (let i = 0; i < items.length; i += 400) {
+                const batch = db.batch();
+                items.slice(i, i + 400).forEach(item => {
+                    batch.set(db.collection('allowed_cars').doc(item.plate), { owner: item.owner });
+                });
+                await batch.commit();
+            }
+            alert('Úspešne uložených áut: ' + items.length);
+        } else {
             alert('Nenašli sa žiadne platné riadky (formát: SPZ;Meno).');
-            return;
         }
-
-        for (let i = 0; i < records.length; i += 400) {
-            const batch = db.batch();
-            const chunk = records.slice(i, i + 400);
-            chunk.forEach(item => {
-                const ref = db.collection('allowed_cars').doc(item.plate);
-                batch.set(ref, { owner: item.owner });
-            });
-            await batch.commit();
-        }
-
-        alert('Úspešne uložených áut: ' + records.length);
     }
 
     function importCSV() {
@@ -629,9 +689,10 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearDB() {
-        if (!currentUser || currentUser.role !== 'A') return alert('Nemáš oprávnenie správcu.');
-        if (!verifyActionPassword()) return;
-        if (!confirm('Naozaj vymazať VŠETKY povolené autá z databázy?')) return;
+        if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
+        const p = prompt('Zadaj heslo Admina:');
+        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
+        if (!confirm('Naozaj vymazať VŠETKY povolené autá?')) return;
         for (let i = 0; i < allowedCars.length; i += 400) {
             const batch = db.batch();
             allowedCars.slice(i, i + 400).forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
@@ -640,7 +701,7 @@ BA456CD;Firma ABC"></textarea>
     }
 
     function escapeHtml(str) {
-        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
     function renderDB() {
@@ -652,7 +713,7 @@ BA456CD;Firma ABC"></textarea>
                     <span class="plate-badge">${escapeHtml(c.plate)}</span>
                     <div class="meta">${escapeHtml(c.owner) || '—'}</div>
                 </div>
-                <button class="btn btn-danger" onclick="removeCarEncoded('${encodeURIComponent(c.plate)}')">🔒 Zmazať</button>
+                <button class="btn btn-danger" onclick="removeCar('${encodeURIComponent(c.plate)}')">🔒 Zmazať</button>
             </div>
         `).join('');
     }
@@ -664,95 +725,34 @@ BA456CD;Firma ABC"></textarea>
                 <div class="card-info">
                     <span class="status-dot" style="background:${h.allowed ? 'var(--success)' : 'var(--danger)'}"></span>
                     <span class="plate-badge">${escapeHtml(h.plate)}</span>
-                    <div class="meta">${escapeHtml(h.owner)} • ${escapeHtml(h.timeStr || '')} (${escapeHtml(h.user || h.device || 'Užívateľ')})</div>
+                    <div class="meta">${escapeHtml(h.owner)} • ${escapeHtml(h.timeStr || '')} (${escapeHtml(h.device || '')})</div>
                 </div>
             </div>
         `).join('');
     }
 
     async function clearHistory() {
-        if (!currentUser || currentUser.role !== 'A') return alert('Nemáš oprávnenie správcu.');
-        if (!verifyActionPassword()) return;
+        if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
+        const p = prompt('Zadaj heslo Admina:');
+        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
-        for (let i = 0; i < scanHistory.length; i += 400) {
-            const batch = db.batch();
-            scanHistory.slice(i, i + 400).forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
-            await batch.commit();
-        }
+        const batch = db.batch();
+        scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
+        await batch.commit();
     }
 
     function exportCSV() {
-        let csv = '\uFEFFCas;SPZ;Stav;Majitel;Uzivatel\n';
+        let csv = '\uFEFFCas;SPZ;Stav;Majitel;Kontrolor\n';
         scanHistory.forEach(h => {
-            csv += `${h.timeStr || ''};${h.plate};${h.allowed ? 'POVOLENE' : 'NEPOVOLENE'};${h.owner || ''};${h.user || h.device || ''}\n`;
+            csv += `${h.timeStr || ''};${h.plate};${h.allowed ? 'POVOLENE' : 'NEPOVOLENE'};${h.owner || ''};${h.device || ''}\n`;
         });
-        const safeUser = (currentUser ? currentUser.name : 'uzivatel').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeUser = currentUser ? normalizeName(currentUser.name).replace(/[^a-z0-9]/g, '_') : 'export';
         const dateStr = new Date().toISOString().slice(0, 10);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `kontrola_parkovania_${safeUser}_${dateStr}.csv`;
         link.click();
-    }
-
-    // Správa užívateľov a zmena vlastného hesla
-    async function saveUser() {
-        if (!currentUser || currentUser.role !== 'A') return alert('Nemáš oprávnenie.');
-        const rawName = document.getElementById('user-name').value.trim();
-        const pass = document.getElementById('user-pass').value.trim();
-        const role = document.getElementById('user-role').value;
-        const norm = normalizeName(rawName);
-
-        if (!norm || !pass) return alert('Zadaj meno aj heslo užívateľa.');
-        if (norm === SUPERADMIN_NAME) return alert('Toto meno je vyhradené pre superadmina.');
-
-        await db.collection('app_users').doc(norm).set({
-            name: rawName,
-            pass: pass,
-            role: role
-        });
-
-        document.getElementById('user-name').value = '';
-        document.getElementById('user-pass').value = '';
-        alert('Užívateľ ' + rawName + ' bol uložený.');
-    }
-
-    async function removeUserEncoded(encodedId) {
-        if (!currentUser || currentUser.role !== 'A') return;
-        const id = decodeURIComponent(encodedId);
-        if (!verifyActionPassword()) return;
-        if (confirm('Naozaj odstrániť užívateľa ' + id + '?')) {
-            await db.collection('app_users').doc(id).delete();
-        }
-    }
-
-    function renderUsers() {
-        document.getElementById('users-count').textContent = appUsers.length;
-        const list = document.getElementById('users-list');
-        list.innerHTML = appUsers.map(u => `
-            <div class="card">
-                <div class="card-info">
-                    <strong>${escapeHtml(u.name)}</strong>
-                    <span class="role-badge ${u.role === 'A' ? 'admin' : ''}">${u.role === 'A' ? 'Admin (A)' : 'Užívateľ (U)'}</span>
-                </div>
-                <button class="btn btn-danger" onclick="removeUserEncoded('${encodeURIComponent(u.id)}')">🔒 Zmazať</button>
-            </div>
-        `).join('');
-    }
-
-    async function changeOwnPassword() {
-        if (!currentUser || currentUser.isSuper) return;
-        const oldP = document.getElementById('old-pass').value.trim();
-        const newP = document.getElementById('new-pass').value.trim();
-
-        if (!oldP || !newP) return alert('Vyplň staré aj nové heslo.');
-        if (oldP !== currentUser.pass) return alert('Staré heslo nie je správne.');
-
-        await db.collection('app_users').doc(currentUser.id).update({ pass: newP });
-        currentUser.pass = newP;
-        document.getElementById('old-pass').value = '';
-        document.getElementById('new-pass').value = '';
-        alert('Tvoje heslo bolo úspešne zmenené.');
     }
 </script>
 </body>
