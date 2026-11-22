@@ -93,7 +93,7 @@
 
 <div id="tab-db" class="tab">
     <div class="section-box">
-        <h3 style="margin-top:0;">1. Pridať jedno auto</h3>
+        <h3 style="margin-top:0;">1. Pridať jedno auto (do cloudu)</h3>
         <input type="text" id="new-plate" placeholder="ŠPZ (napr. BA999XX)" style="text-transform: uppercase;">
         <input type="text" id="new-owner" placeholder="Meno majiteľa / Firma / Poznámka">
         <button class="btn btn-primary" onclick="addCar()">+ Uložiť pre všetky mobily</button>
@@ -149,7 +149,7 @@
 
     function checkAdminPin() {
         if (isAdminUnlocked) return true;
-        const entered = prompt("🔒 Zadaj správcovský PIN kód na vymazanie:");
+        const entered = prompt("Zadaj správcovský PIN kód pre vymazanie:");
         if (entered === ADMIN_PIN) {
             isAdminUnlocked = true;
             return true;
@@ -188,28 +188,28 @@
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            db.enablePersistence().catch(() => {});
+            db.enablePersistence().catch(function() {});
 
-            db.collection("allowed_cars").orderBy("plate").onSnapshot((snapshot) => {
+            db.collection("allowed_cars").orderBy("plate").onSnapshot(function(snapshot) {
                 allowedCars = [];
-                snapshot.forEach((doc) => {
-                    allowedCars.push({ id: doc.id, ...doc.data() });
+                snapshot.forEach(function(doc) {
+                    allowedCars.push(Object.assign({ id: doc.id }, doc.data()));
                 });
                 renderDB();
                 document.getElementById('sync-status').innerText = '🟢 Online (' + allowedCars.length + ')';
-            }, (error) => {
-                document.getElementById('sync-status').innerText = '🔴 Chyba spojenia';
-                console.error(error);
+            }, function(error) {
+                document.getElementById('sync-status').innerText = '🔴 Chyba: ' + error.code;
             });
 
-            db.collection("scan_history").orderBy("timestamp", "desc").limit(200).onSnapshot((snapshot) => {
+            db.collection("scan_history").orderBy("timestamp", "desc").limit(200).onSnapshot(function(snapshot) {
                 scanHistory = [];
-                snapshot.forEach((doc) => {
-                    scanHistory.push({ id: doc.id, ...doc.data() });
+                snapshot.forEach(function(doc) {
+                    scanHistory.push(Object.assign({ id: doc.id }, doc.data()));
                 });
                 renderHistory();
             });
         } catch (e) {
+            document.getElementById('sync-status').innerText = '🔴 Chyba FB';
             alert("Chyba pri spúšťaní Firebase: " + e.message);
         }
     }
@@ -329,7 +329,7 @@
     }
 
     function verifyPlate(plate) {
-        const match = allowedCars.find(car => car.plate === plate);
+        const match = allowedCars.find(function(car) { return car.plate === plate; });
         const banner = document.getElementById('result-banner');
         const statusEl = document.getElementById('result-status');
         const plateEl = document.getElementById('result-plate');
@@ -351,7 +351,7 @@
         if (match) {
             banner.className = 'ok';
             statusEl.innerText = '✅ POVOLENÉ PARKOVANIE';
-            ownerEl.innerText = match.owner ? `Majiteľ: ${match.owner}` : 'Bez poznámky';
+            ownerEl.innerText = match.owner ? 'Majiteľ: ' + match.owner : 'Bez poznámky';
             playBeep(true);
             record.status = 'OK';
             record.owner = match.owner || '-';
@@ -360,39 +360,39 @@
             statusEl.innerText = '🚨 NEPOVOLENÉ AUTO!';
             ownerEl.innerText = 'Auto sa nenachádza v databáze';
             playBeep(false);
-            if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+            if (navigator.vibrate) navigator.vibrate(400);
             record.status = 'NEPOVOLENÉ';
             record.owner = '-';
         }
 
         if (db) {
-            db.collection("scan_history").add(record).catch(err => console.error("Chyba zápisu:", err));
+            db.collection("scan_history").add(record).catch(function(err) { console.error(err); });
         }
     }
 
     async function addCar() {
-        if (!db) return alert("Chyba spojenia s databázou.");
+        if (!db) return alert("Databáza nie je pripojená.");
         const plateInput = document.getElementById('new-plate');
         const ownerInput = document.getElementById('new-owner');
         const plate = cleanPlate(plateInput.value);
         const owner = ownerInput.value.trim();
 
         if (plate.length < 3) return alert("Zadaj správnu ŠPZ.");
-        if (allowedCars.some(c => c.plate === plate)) return alert("Táto ŠPZ už v databáze je.");
+        if (allowedCars.some(function(c) { return c.plate === plate; })) return alert("Táto ŠPZ už v databáze je.");
 
-        await db.collection("allowed_cars").doc(plate).set({ plate, owner });
+        await db.collection("allowed_cars").doc(plate).set({ plate: plate, owner: owner });
         plateInput.value = '';
         ownerInput.value = '';
     }
 
     async function processLines(rawText) {
-        if (!db) return alert("Chyba spojenia s databázou.");
+        if (!db) return 0;
         const lines = rawText.split(/?
 /);
         const batch = db.batch();
         let added = 0;
 
-        lines.forEach(line => {
+        lines.forEach(function(line) {
             if (!line.trim()) return;
             const parts = line.split(/[;,	]/);
             const plate = cleanPlate(parts[0] || '');
@@ -400,9 +400,9 @@
             
             if (plate === 'SPZ' || plate === 'ZNACKA') return;
 
-            if (plate.length >= 3 && !allowedCars.some(c => c.plate === plate)) {
+            if (plate.length >= 3 && !allowedCars.some(function(c) { return c.plate === plate; })) {
                 const docRef = db.collection("allowed_cars").doc(plate);
-                batch.set(docRef, { plate, owner });
+                batch.set(docRef, { plate: plate, owner: owner });
                 added++;
             }
         });
@@ -421,7 +421,7 @@
         const reader = new FileReader();
         reader.onload = async function(e) {
             const added = await processLines(e.target.result);
-            alert(`Hotovo! Do cloudu pridaných ${added} nových áut.`);
+            alert("Hotovo! Do cloudu pridaných " + added + " nových áut.");
             fileInput.value = '';
         };
         reader.readAsText(file, 'UTF-8');
@@ -431,13 +431,13 @@
         const area = document.getElementById('bulk-text');
         if (!area.value.trim()) return alert("Vlož najprv zoznam ŠPZ.");
         const added = await processLines(area.value);
-        alert(`Hotovo! Do cloudu pridaných ${added} nových áut.`);
+        alert("Hotovo! Do cloudu pridaných " + added + " nových áut.");
         area.value = '';
     }
 
     async function deleteCar(plate) {
         if (!checkAdminPin()) return;
-        if (db && confirm(`Naozaj vymazať auto ${plate}?`)) {
+        if (db) {
             await db.collection("allowed_cars").doc(plate).delete();
         }
     }
@@ -447,7 +447,7 @@
         if (!checkAdminPin()) return;
         if (confirm("Naozaj chceš vymazať VŠETKY povolené autá zo všetkých mobilov?")) {
             const batch = db.batch();
-            allowedCars.forEach(car => {
+            allowedCars.forEach(function(car) {
                 batch.delete(db.collection("allowed_cars").doc(car.plate));
             });
             await batch.commit();
@@ -457,15 +457,15 @@
     function renderDB() {
         document.getElementById('db-count').innerText = allowedCars.length;
         const list = document.getElementById('db-list');
-        list.innerHTML = allowedCars.map(car => `
-            <div class="card">
-                <div>
-                    <span class="plate-badge">${car.plate}</span>
-                    <div class="meta">${car.owner || 'Bez poznámky'}</div>
-                </div>
-                <button class="btn btn-danger" onclick="deleteCar('${car.plate}')">X</button>
-            </div>
-        `).join('');
+        list.innerHTML = allowedCars.map(function(car) {
+            return '<div class="card">' +
+                '<div>' +
+                    '<span class="plate-badge">' + car.plate + '</span>' +
+                    '<div class="meta">' + (car.owner || 'Bez poznámky') + '</div>' +
+                '</div>' +
+                '<button class="btn btn-danger" onclick="deleteCar('' + car.plate + '')">🔒 X</button>' +
+            '</div>';
+        }).join('');
     }
 
     function renderHistory() {
@@ -474,30 +474,31 @@
             list.innerHTML = '<p style="text-align:center; color:#64748b;">Zatiaľ žiadne záznamy.</p>';
             return;
         }
-        list.innerHTML = scanHistory.map(item => `
-            <div class="card">
-                <div>
-                    <span class="status-dot" style="background:${item.status === 'OK' ? 'var(--success)' : 'var(--danger)'}"></span>
-                    <span class="plate-badge">${item.plate}</span>
-                    <strong style="color:${item.status === 'OK' ? 'var(--success)' : 'var(--danger)'}; margin-left:6px;">${item.status}</strong>
-                    <div class="meta">${item.time} • ${item.owner} (${item.device || 'Mobil'})</div>
-                </div>
-            </div>
-        `).join('');
+        list.innerHTML = scanHistory.map(function(item) {
+            const color = item.status === 'OK' ? 'var(--success)' : 'var(--danger)';
+            return '<div class="card">' +
+                '<div>' +
+                    '<span class="status-dot" style="background:' + color + '"></span>' +
+                    '<span class="plate-badge">' + item.plate + '</span>' +
+                    '<strong style="color:' + color + '; margin-left:6px;">' + item.status + '</strong>' +
+                    '<div class="meta">' + item.time + ' • ' + item.owner + ' (' + (item.device || 'Mobil') + ')</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
     }
 
     function exportHistoryCSV() {
         if (scanHistory.length === 0) return alert("História je prázdna.");
         let csv = "﻿Datum a cas;SPZ;Vysledok;Majitel;Zariadenie
 ";
-        scanHistory.forEach(r => {
-            csv += `${r.time};${r.plate};${r.status};${r.owner};${r.device || 'Mobil'}
-`;
+        scanHistory.forEach(function(r) {
+            csv += r.time + ";" + r.plate + ";" + r.status + ";" + r.owner + ";" + (r.device || 'Mobil') + "
+";
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `kontrola_parkovania_${new Date().toISOString().slice(0,10)}.csv`;
+        link.download = "kontrola_parkovania_" + new Date().toISOString().slice(0,10) + ".csv";
         link.click();
     }
 
@@ -506,7 +507,7 @@
         if (!checkAdminPin()) return;
         if (confirm("Vymazať zobrazenú históriu kontrol zo cloudu?")) {
             const batch = db.batch();
-            scanHistory.forEach(item => {
+            scanHistory.forEach(function(item) {
                 batch.delete(db.collection("scan_history").doc(item.id));
             });
             await batch.commit();
@@ -514,14 +515,14 @@
     }
 
     function switchTab(tabId, title, btn) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('active'); });
         document.getElementById('tab-' + tabId).classList.add('active');
         btn.classList.add('active');
         document.getElementById('header-title').innerText = title;
     }
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', function() {
         initFirebase();
         startCamera();
     });
