@@ -15,6 +15,7 @@
             --primary: #2563eb;
             --success: #16a34a;
             --export: #059669;
+            --offline: #d97706;
             --danger: #dc2626;
             --bg: #f8fafc;
             --card: #ffffff;
@@ -92,14 +93,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password" onkeydown="if(event.key==='Enter') checkLogin()">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.18</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.19</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.18</span>
+        <span class="version-tag">v1.19</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -230,46 +231,73 @@
     const SUPERADMIN_PASS = "1719";
 
     let db = null;
-    let allowedCars = [];
-    let scanHistory = [];
-    let appUsers = [];
+    let allowedCars = JSON.parse(localStorage.getItem('park_cars_cache') || '[]');
+    let scanHistory = JSON.parse(localStorage.getItem('park_hist_cache') || '[]');
+    let appUsers = JSON.parse(localStorage.getItem('park_users_cache') || '[]');
     let currentUser = null;
     let scanMode = 'sharp';
     let isTallFrame = false;
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
 
     function normalizeName(str) {
         return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
 
+    function updateConnectionBadge() {
+        const badge = document.getElementById('sync-status');
+        if (!navigator.onLine) {
+            badge.textContent = '🟠 Offline režim';
+            badge.style.background = 'rgba(217, 119, 6, 0.9)';
+        } else if (db) {
+            badge.textContent = '🟢 Cloud OK';
+            badge.style.background = 'rgba(22, 163, 74, 0.85)';
+        }
+    }
+
+    window.addEventListener('online', updateConnectionBadge);
+    window.addEventListener('offline', updateConnectionBadge);
+
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
+        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
         db.collection('app_users').onSnapshot(snapshot => {
             appUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             appUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
             renderUsers();
         });
 
         db.collection('allowed_cars').onSnapshot(snapshot => {
             allowedCars = snapshot.docs.map(doc => ({ plate: doc.id, ...doc.data() }));
             allowedCars.sort((a, b) => a.plate.localeCompare(b.plate));
+            localStorage.setItem('park_cars_cache', JSON.stringify(allowedCars));
             renderDB();
-            updateSyncStatus(true);
+            updateConnectionBadge();
         }, err => {
             console.error(err);
-            updateSyncStatus(false, err.message);
+            updateConnectionBadge();
         });
 
         db.collection('scan_history').orderBy('timestamp', 'desc').limit(150).onSnapshot(snapshot => {
             scanHistory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            localStorage.setItem('park_hist_cache', JSON.stringify(scanHistory));
             renderHistory();
         });
     } catch (e) {
-        updateSyncStatus(false, e.message);
+        updateConnectionBadge();
     }
 
-    const savedSession = sessionStorage.getItem('park_user_v118');
+    renderDB();
+    renderHistory();
+    renderUsers();
+    updateConnectionBadge();
+
+    const savedSession = sessionStorage.getItem('park_user_v119');
     if (savedSession) {
         try {
             currentUser = JSON.parse(savedSession);
@@ -300,9 +328,10 @@
 
         try {
             let found = appUsers.find(u => (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass);
-            if (!found && db) {
+            if (!found && db && navigator.onLine) {
                 const snap = await db.collection('app_users').get();
                 appUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
                 found = appUsers.find(u => (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass);
             }
 
@@ -310,11 +339,13 @@
                 currentUser = { id: found.id, name: found.name, pass: String(found.pass), role: found.role || 'U', isSuper: false };
                 finishLogin();
             } else {
-                errEl.textContent = 'Nesprávne meno alebo heslo.';
+                errEl.textContent = navigator.onLine
+                    ? 'Nesprávne meno alebo heslo.'
+                    : 'Účet nie je v offline pamäti alebo je nesprávne heslo.';
                 document.getElementById('login-pass').value = '';
             }
         } catch (e) {
-            errEl.textContent = 'Chyba spojenia s databázou.';
+            errEl.textContent = 'Chyba pri overení účtu.';
         } finally {
             btn.disabled = false;
         }
@@ -322,7 +353,7 @@
 
     function finishLogin() {
         document.getElementById('login-error').textContent = '';
-        sessionStorage.setItem('park_user_v118', JSON.stringify(currentUser));
+        sessionStorage.setItem('park_user_v119', JSON.stringify(currentUser));
         applyUserSession();
     }
 
@@ -340,7 +371,7 @@
     }
 
     function logoutApp() {
-        sessionStorage.removeItem('park_user_v118');
+        sessionStorage.removeItem('park_user_v119');
         currentUser = null;
         document.getElementById('login-name').value = '';
         document.getElementById('login-pass').value = '';
@@ -359,7 +390,7 @@
         if (!norm || norm === SUPERADMIN_USER) return alert('Zadaj platné meno (meno admin je vyhradené).');
         if (pass.length < 3) return alert('Heslo musí mať aspoň 3 znaky.');
 
-        await db.collection('app_users').doc(norm).set({
+        db.collection('app_users').doc(norm).set({
             name: name,
             pass: pass,
             role: role
@@ -376,7 +407,7 @@
         const p = prompt('Zadaj svoje heslo pre potvrdenie zmazania:');
         if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (confirm('Zmazať užívateľa ' + name + '?')) {
-            await db.collection('app_users').doc(id).delete();
+            db.collection('app_users').doc(id).delete();
         }
     }
 
@@ -405,24 +436,12 @@
         if (oldP !== currentUser.pass) return alert('Aktuálne heslo nie je správne.');
         if (newP.length < 3) return alert('Nové heslo musí mať aspoň 3 znaky.');
 
-        await db.collection('app_users').doc(currentUser.id).update({ pass: newP });
+        db.collection('app_users').doc(currentUser.id).update({ pass: newP });
         currentUser.pass = newP;
-        sessionStorage.setItem('park_user_v118', JSON.stringify(currentUser));
+        sessionStorage.setItem('park_user_v119', JSON.stringify(currentUser));
         document.getElementById('old-pass').value = '';
         document.getElementById('new-pass').value = '';
         alert('Heslo bolo úspešne zmenené.');
-    }
-
-    function updateSyncStatus(ok, errMsg = '') {
-        const badge = document.getElementById('sync-status');
-        if (ok) {
-            badge.textContent = '🟢 Cloud OK';
-            badge.style.background = 'rgba(22, 163, 74, 0.85)';
-        } else {
-            badge.textContent = '🔴 Chyba cloudu';
-            badge.style.background = 'rgba(220, 38, 38, 0.85)';
-            if (errMsg) alert('Chyba databázy: ' + errMsg);
-        }
     }
 
     function normalizePlate(str) {
@@ -588,7 +607,7 @@
         input.value = '';
     }
 
-    async function verifyAndLog(plate) {
+    function verifyAndLog(plate) {
         const found = allowedCars.find(c => c.plate === plate);
         const banner = document.getElementById('result-banner');
         const statusEl = document.getElementById('result-status');
@@ -609,29 +628,36 @@
         }
 
         const userLabel = currentUser ? `${currentUser.name} (${currentUser.role})` : 'Neznámy';
+        const record = {
+            plate: plate,
+            allowed: !!found,
+            owner: found ? (found.owner || '') : 'Nepovolené',
+            device: userLabel,
+            timeStr: new Date().toLocaleString('sk-SK'),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
         if (db) {
-            await db.collection('scan_history').add({
-                plate: plate,
-                allowed: !!found,
-                owner: found ? (found.owner || '') : 'Nepovolené',
-                device: userLabel,
-                timeStr: new Date().toLocaleString('sk-SK'),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            db.collection('scan_history').add(record);
+        }
+        if (!navigator.onLine) {
+            scanHistory.unshift({ ...record, id: 'offline_' + Date.now() });
+            localStorage.setItem('park_hist_cache', JSON.stringify(scanHistory));
+            renderHistory();
         }
     }
 
-    async function addCar() {
+    function addCar() {
         const plate = normalizePlate(document.getElementById('new-plate').value);
         const owner = document.getElementById('new-owner').value.trim();
         if (plate.length < 3) return alert('Zadaj správnu ŠPZ.');
 
-        await db.collection('allowed_cars').doc(plate).set({ owner: owner });
+        if (db) db.collection('allowed_cars').doc(plate).set({ owner: owner });
         document.getElementById('new-plate').value = '';
         document.getElementById('new-owner').value = '';
     }
 
-    async function removeCar(encodedPlate) {
+    function removeCar(encodedPlate) {
         const plate = decodeURIComponent(encodedPlate);
         const p = prompt('Zadaj svoje heslo pre zmazanie auta ' + plate + ':');
         if (!p) return;
@@ -639,7 +665,7 @@
             return alert('Nesprávne heslo.');
         }
         if (confirm('Naozaj odstrániť ' + plate + ' zo zoznamu?')) {
-            await db.collection('allowed_cars').doc(plate).delete();
+            if (db) db.collection('allowed_cars').doc(plate).delete();
         }
     }
 
@@ -739,6 +765,7 @@
         const batch = db.batch();
         scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
         await batch.commit();
+        localStorage.removeItem('park_hist_cache');
     }
 
     function exportCSV() {
