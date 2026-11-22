@@ -6,8 +6,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="icon-512.png">
-    <link rel="apple-touch-icon" href="icon-512.png">
     <title>Kontrola Parkovania</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -156,7 +154,9 @@ BA456CD;Firma ABC"></textarea>
         appId: "1:974462279794:web:649e27e3e07dbd1b6de2eb"
     };
 
-    const ADMIN_PIN = "1234";
+    const ADMIN_PIN = "1719";
+    const CAR_PIN = "1789";
+
     let db = null;
     let allowedCars = [];
     let scanHistory = [];
@@ -324,9 +324,11 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function removeCar(plate) {
-        if (confirm('Odstrániť ' + plate + ' zo zoznamu?')) {
-            await db.collection('allowed_cars').doc(plate).delete();
+        const pin = prompt('Zadaj PIN pre vymazanie auta ' + plate + ':');
+        if (pin !== CAR_PIN && pin !== ADMIN_PIN) {
+            return alert('Nesprávny PIN!');
         }
+        await db.collection('allowed_cars').doc(plate).delete();
     }
 
     async function parseAndUploadLines(text) {
@@ -338,8 +340,8 @@ BA456CD;Firma ABC"></textarea>
             const clean = line.trim();
             if (!clean) return;
             const parts = clean.split(/[;,]/);
-            const plate = normalizePlate(parts || '');
-            const owner = (parts || '').trim();
+            const plate = normalizePlate(parts[0] || '');
+            const owner = (parts[1] || '').trim();
             if (plate.length >= 3 && plate !== 'SPZ') {
                 const ref = db.collection('allowed_cars').doc(plate);
                 batch.set(ref, { owner: owner });
@@ -360,7 +362,7 @@ BA456CD;Firma ABC"></textarea>
         if (!fileInput.files.length) return alert('Najprv vyber CSV súbor.');
         const reader = new FileReader();
         reader.onload = e => parseAndUploadLines(e.target.result);
-        reader.readAsText(fileInput.files, 'UTF-8');
+        reader.readAsText(fileInput.files[0], 'UTF-8');
     }
 
     function importBulkText() {
@@ -372,7 +374,9 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearDB() {
-        if (prompt('Zadaj PIN správcu (' + ADMIN_PIN + '):') !== ADMIN_PIN) return alert('Nesprávny PIN.');
+        if (prompt('Zadaj ADMIN PIN pre vymazanie celého zoznamu:') !== ADMIN_PIN) {
+            return alert('Nesprávny ADMIN PIN!');
+        }
         const batch = db.batch();
         allowedCars.forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
         await batch.commit();
@@ -387,7 +391,7 @@ BA456CD;Firma ABC"></textarea>
                     <span class="plate-badge">${c.plate}</span>
                     <div class="meta">${c.owner || '—'}</div>
                 </div>
-                <button class="btn btn-danger" onclick="removeCar('${c.plate}')">Zmazať</button>
+                <button class="btn btn-danger" onclick="removeCar('${c.plate}')">🔒 Zmazať</button>
             </div>
         `).join('');
     }
@@ -406,7 +410,9 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearHistory() {
-        if (prompt('Zadaj PIN správcu (' + ADMIN_PIN + '):') !== ADMIN_PIN) return alert('Nesprávny PIN.');
+        if (prompt('Zadaj ADMIN PIN pre vymazanie histórie:') !== ADMIN_PIN) {
+            return alert('Nesprávny ADMIN PIN!');
+        }
         const batch = db.batch();
         scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
         await batch.commit();
