@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <title>Kontrola Parkovania v1.7</title>
+    <title>Kontrola Parkovania v1.8</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -21,24 +21,16 @@
         }
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; padding: 0; background: var(--bg); color: var(--text); padding-bottom: 75px; }
+        header { background: var(--primary); color: white; padding: 14px 15px; font-weight: bold; font-size: 1.1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+        .version-badge { font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 3px 7px; border-radius: 6px; margin-left: 6px; font-weight: normal; }
+        .sync-badge { font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; }
+        .lock-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin-left: 6px; }
         
-        /* Uzamykacia obrazovka */
-        #lock-screen {
-            position: fixed; inset: 0; background: #0f172a; color: white; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center;
-        }
-        .lock-box { background: #1e293b; padding: 25px; border-radius: 16px; width: 100%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-        .lock-input {
-            width: 100%; padding: 14px; font-size: 1.6rem; text-align: center; letter-spacing: 8px;
-            border-radius: 10px; border: 2px solid #334155; background: #0f172a; color: white; margin: 15px 0; font-weight: bold;
-        }
+        /* Vstupná PIN obrazovka */
+        #pin-overlay { position: fixed; inset: 0; background: #0f172a; color: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        #pin-overlay input { font-size: 1.8rem; text-align: center; letter-spacing: 8px; width: 200px; padding: 12px; border-radius: 10px; border: 2px solid #38bdf8; background: #1e293b; color: white; margin: 15px 0; }
+        #pin-overlay button { width: 200px; padding: 14px; font-size: 1.05rem; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; }
 
-        header { background: var(--primary); color: white; padding: 12px 15px; font-weight: bold; font-size: 1.1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
-        .version-tag { font-size: 0.72rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 6px; margin-left: 6px; font-weight: normal; }
-        .header-right { display: flex; align-items: center; gap: 6px; }
-        .sync-badge { font-size: 0.72rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; }
-        .lock-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-        
         nav { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; border-top: 1px solid #cbd5e1; z-index: 10; }
         nav button { flex: 1; padding: 12px 5px; border: none; background: none; font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         nav button.active { color: var(--primary); border-top: 3px solid var(--primary); }
@@ -46,24 +38,17 @@
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
         
-        /* Väčší a širší rámik kamery */
-        .camera-box { position: relative; width: 100%; height: 270px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; }
+        .camera-box { position: relative; width: 100%; height: 290px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .scan-frame {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 88%; height: 84px;
-            border: 3px solid #38bdf8; border-radius: 10px;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.58); pointer-events: none;
-            transition: width 0.2s, height 0.2s;
-        }
-        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; }
+        .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s ease; }
+        .scan-frame.two-line { height: 136px; }
+        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.82rem; text-shadow: 0 1px 3px #000; }
         #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        
-        /* Prepínač režimu skenovania a veľkosti rámika */
-        .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
-        .mode-btn { flex: 1; padding: 9px 6px; border: none; border-radius: 7px; font-size: 0.82rem; font-weight: 600; cursor: pointer; background: transparent; color: #475569; transition: 0.15s; }
-        .mode-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
+        .toggle-row { display: flex; gap: 6px; margin-bottom: 10px; }
+        .toggle-btn { flex: 1; padding: 9px 6px; border: 1px solid #cbd5e1; background: white; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #475569; cursor: pointer; }
+        .toggle-btn.active { background: #eff6ff; border-color: var(--primary); color: var(--primary); }
+        
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
@@ -75,10 +60,10 @@
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 16px; border-radius: 12px; color: white; text-align: center; margin-bottom: 12px; }
+        #result-banner { display: none; padding: 18px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
-        #result-plate { font-size: 2.1rem; font-weight: 900; letter-spacing: 2px; margin: 4px 0; word-break: break-all; }
+        #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; word-break: break-all; }
         
         .card { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
         .plate-badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 1.1rem; }
@@ -89,23 +74,22 @@
 </head>
 <body>
 
-<div id="lock-screen">
-    <div class="lock-box">
-        <div style="font-size: 2.5rem; margin-bottom: 5px;">🅿️</div>
-        <h2 style="margin: 0 0 6px 0;">Kontrola Parkovania</h2>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">Zadaj prístupový PIN kód</p>
-        <input type="password" inputmode="numeric" id="login-pin" class="lock-input" maxlength="6" placeholder="••••" onkeyup="if(event.key==='Enter') unlockApp()">
-        <button class="btn btn-primary" style="margin-bottom: 0;" onclick="unlockApp()">🔓 Odomknúť aplikáciu</button>
-        <div id="lock-error" style="color: #f87171; font-size: 0.85rem; margin-top: 10px; display: none;">Nesprávny PIN kód!</div>
-    </div>
+<!-- Vstupná obrazovka s PIN ochranou -->
+<div id="pin-overlay">
+    <div style="font-size: 2.5rem; margin-bottom: 8px;">🅿️</div>
+    <h2 style="margin: 0 0 6px 0;">Kontrola Parkovania</h2>
+    <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">Zadaj prístupový PIN (v1.8)</p>
+    <input type="password" id="pin-input" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') checkLoginPin()">
+    <button onclick="checkLoginPin()">Odomknúť</button>
+    <div id="pin-error" style="color: #f87171; font-size: 0.85rem; margin-top: 10px; min-height: 20px;"></div>
 </div>
 
 <header>
     <div>
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.7</span>
+        <span class="version-badge">v1.8</span>
     </div>
-    <div class="header-right">
+    <div style="display:flex; align-items:center;">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
         <button class="lock-btn" onclick="lockApp()" title="Zamknúť aplikáciu">🔒</button>
     </div>
@@ -122,17 +106,19 @@
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
         <div id="scan-frame" class="scan-frame"></div>
-        <div class="scan-hint">Umiestni ŠPZ do modrého okna</div>
+        <div class="scan-hint">Umiestni ŠPZ do modrého rámika</div>
     </div>
 
-    <div class="mode-switch">
-        <button id="mode-sharp" class="mode-btn active" onclick="setScanMode('sharp')">⚡ Ostrý (Denný)</button>
-        <button id="mode-soft" class="mode-btn" onclick="setScanMode('soft')">🌗 Tieň / Odlesk</button>
+    <!-- Prepínač tvaru rámika -->
+    <div class="toggle-row">
+        <button id="frame-1line" class="toggle-btn active" onclick="setFrameMode(1)">▭ Široký rámik (1 riadok)</button>
+        <button id="frame-2line" class="toggle-btn" onclick="setFrameMode(2)">▢ Vysoký rámik (2 riadky)</button>
     </div>
 
-    <div class="mode-switch">
-        <button id="size-normal" class="mode-btn active" onclick="setFrameSize('normal')">▭ Široký rámik (1 riadok)</button>
-        <button id="size-tall" class="mode-btn" onclick="setFrameSize('tall')">▢ Vysoký rámik (2 riadky)</button>
+    <!-- Prepínač 2 režimov algoritmu -->
+    <div class="toggle-row">
+        <button id="algo-sharp" class="toggle-btn active" onclick="setAlgoMode('sharp')">⚡ Ostrý (Denný)</button>
+        <button id="algo-soft" class="toggle-btn" onclick="setAlgoMode('soft')">🌗 Tieň / Odlesk</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate()">📸 Odfotiť a overiť ŠPZ</button>
@@ -140,7 +126,7 @@
     <div style="text-align: center; color: #64748b; font-size: 0.85rem; margin: 10px 0;">— alebo zadaj ručne (napr. pri špinavej značke) —</div>
     
     <div class="manual-check">
-        <input type="text" id="manual-plate" placeholder="Napr. NR123AB" maxlength="10">
+        <input type="text" id="manual-plate" placeholder="Napr. NR123AB" maxlength="10" onkeydown="if(event.key==='Enter') manualVerify()">
         <button class="btn btn-success" onclick="manualVerify()">Overiť</button>
     </div>
 </div>
@@ -155,14 +141,15 @@
 
     <div class="section-box">
         <h3 style="margin-top:0;">2. Hromadný import z CSV súboru</h3>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber stiahnutý <b>.csv</b> súbor z pamäte mobilu (formát: <code>SPZ;Meno</code>).</p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber <b>.csv</b> súbor (formát: <code>SPZ;Meno</code>).</p>
         <input type="file" id="csv-file" accept=".csv,.txt,text/csv,text/plain" style="font-size: 0.9rem; margin-bottom: 10px; width: 100%;">
         <button class="btn btn-outline" onclick="importCSV()">📂 Nahrať vybraný CSV súbor</button>
     </div>
 
     <div class="section-box">
         <h3 style="margin-top:0;">3. Rýchle vloženie zoznamu (Copy-Paste)</h3>
-        <textarea id="bulk-text" rows="3" placeholder="NR123AB;Ján Novák
+        <p style="font-size: 0.82rem; color: #64748b; margin-top: 0;">Vlož riadky v tvare <code>SPZ;Meno</code> alebo skopíruj 2 stĺpce z Excelu:</p>
+        <textarea id="bulk-text" rows="4" placeholder="NR123AB;Ján Novák
 BA456CD;Firma ABC"></textarea>
         <button class="btn btn-outline" onclick="importBulkText()">📋 Uložiť vložený zoznam</button>
     </div>
@@ -211,71 +198,44 @@ BA456CD;Firma ABC"></textarea>
     const ADMIN_PIN = "1719";
     const CAR_PIN = "1789";
 
-    let currentRole = sessionStorage.getItem('park_role') || null;
-    let scanMode = 'sharp';
-    let frameSize = 'normal'; // 'normal' (88% x 84px) alebo 'tall' (88% x 135px)
-
-    function checkLockState() {
-        const lockEl = document.getElementById('lock-screen');
-        if (currentRole === 'admin' || currentRole === 'user') {
-            lockEl.style.display = 'none';
-        } else {
-            lockEl.style.display = 'flex';
-        }
-    }
-
-    function unlockApp() {
-        const pin = document.getElementById('login-pin').value.trim();
-        const errEl = document.getElementById('lock-error');
-        if (pin === ADMIN_PIN) {
-            currentRole = 'admin';
-            sessionStorage.setItem('park_role', 'admin');
-            errEl.style.display = 'none';
-            document.getElementById('login-pin').value = '';
-            checkLockState();
-        } else if (pin === CAR_PIN) {
-            currentRole = 'user';
-            sessionStorage.setItem('park_role', 'user');
-            errEl.style.display = 'none';
-            document.getElementById('login-pin').value = '';
-            checkLockState();
-        } else {
-            errEl.style.display = 'block';
-        }
-    }
-
-    function lockApp() {
-        currentRole = null;
-        sessionStorage.removeItem('park_role');
-        checkLockState();
-    }
-
-    function setScanMode(mode) {
-        scanMode = mode;
-        document.getElementById('mode-sharp').classList.toggle('active', mode === 'sharp');
-        document.getElementById('mode-soft').classList.toggle('active', mode === 'soft');
-    }
-
-    function setFrameSize(size) {
-        frameSize = size;
-        const frame = document.getElementById('scan-frame');
-        document.getElementById('size-normal').classList.toggle('active', size === 'normal');
-        document.getElementById('size-tall').classList.toggle('active', size === 'tall');
-        if (size === 'tall') {
-            frame.style.width = '86%';
-            frame.style.height = '136px';
-        } else {
-            frame.style.width = '88%';
-            frame.style.height = '84px';
-        }
-    }
-
-    checkLockState();
-
+    let userRole = sessionStorage.getItem('park_role') || null;
     let db = null;
     let allowedCars = [];
     let scanHistory = [];
     let deviceName = localStorage.getItem('park_device') || 'Mobil';
+    let frameMode = 1;
+    let algoMode = 'sharp';
+
+    if (userRole === 'admin' || userRole === 'car') {
+        document.getElementById('pin-overlay').style.display = 'none';
+    }
+
+    function checkLoginPin() {
+        const val = document.getElementById('pin-input').value.trim();
+        const errEl = document.getElementById('pin-error');
+        if (val === ADMIN_PIN) {
+            userRole = 'admin';
+            sessionStorage.setItem('park_role', 'admin');
+            document.getElementById('pin-overlay').style.display = 'none';
+            document.getElementById('pin-input').value = '';
+            errEl.textContent = '';
+        } else if (val === CAR_PIN) {
+            userRole = 'car';
+            sessionStorage.setItem('park_role', 'car');
+            document.getElementById('pin-overlay').style.display = 'none';
+            document.getElementById('pin-input').value = '';
+            errEl.textContent = '';
+        } else {
+            errEl.textContent = 'Nesprávny PIN kód';
+            document.getElementById('pin-input').value = '';
+        }
+    }
+
+    function lockApp() {
+        userRole = null;
+        sessionStorage.removeItem('park_role');
+        document.getElementById('pin-overlay').style.display = 'flex';
+    }
 
     document.getElementById('device-name').value = deviceName;
 
@@ -314,69 +274,41 @@ BA456CD;Firma ABC"></textarea>
     }
 
     function normalizePlate(str) {
-        return str.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
-    function cleanDetectedPlate(rawText) {
-        let lines = rawText.split(/\r?\n/).map(l => normalizePlate(l)).filter(l => l.length >= 4);
-        let best = lines.sort((a, b) => b.length - a.length) || normalizePlate(rawText);
-
-        if (best.startsWith('SK') && best.length >= 7) {
-            best = best.substring(2);
+    function cleanOcrPlate(rawText) {
+        let s = normalizePlate(rawText);
+        if (s.startsWith('SK') && s.length >= 7) {
+            s = s.substring(2);
         }
-
-        if (best.length === 8 && (best.startsWith('I') || best.startsWith('1') || best.startsWith('L'))) {
-            best = best.substring(1);
+        if (s.length > 7) {
+            const skMatch = s.match(/[A-Z]{2}[0-9OIQ]{3}[A-Z0-9]{2}/);
+            if (skMatch) s = skMatch[0];
         }
-        if (best.length === 8 && (best.endsWith('I') || best.endsWith('1') || best.endsWith('L'))) {
-            best = best.substring(0, 7);
+        if (s.length === 7) {
+            const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B' };
+            const toDigit = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8' };
+            let chars = s.split('');
+            [0, 1, 5, 6].forEach(idx => { if (toLetter[chars[idx]]) chars[idx] = toLetter[chars[idx]]; });
+            [2, 3, 4].forEach(idx => { if (toDigit[chars[idx]]) chars[idx] = toDigit[chars[idx]]; });
+            s = chars.join('');
         }
-
-        if (best.length === 7) {
-            const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '4': 'A', '5': 'S', '6': 'G', '8': 'B' };
-            const toDigit  = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'A': '4', 'S': '5', 'G': '6', 'B': '8' };
-            let chars = best.split('');
-            [0, 1, 5, 6].forEach(i => { if (toLetter[chars[i]]) chars[i] = toLetter[chars[i]]; });
-            [2, 3, 4].forEach(i => { if (toDigit[chars[i]]) chars[i] = toDigit[chars[i]]; });
-            best = chars.join('');
-        }
-
-        return best;
+        return s;
     }
 
-    function preprocessImage(ctx, width, height, mode) {
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const data = imgData.data;
+    function setFrameMode(mode) {
+        frameMode = mode;
+        const frame = document.getElementById('scan-frame');
+        document.getElementById('frame-1line').classList.toggle('active', mode === 1);
+        document.getElementById('frame-2line').classList.toggle('active', mode === 2);
+        frame.classList.toggle('two-line', mode === 2);
+    }
 
-        if (mode === 'sharp') {
-            let sum = 0;
-            const grays = new Uint8Array(width * height);
-            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-                const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                grays[j] = g;
-                sum += g;
-            }
-            const threshold = (sum / grays.length) * 0.85;
-            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-                const val = grays[j] > threshold ? 255 : 0;
-                data[i] = data[i + 1] = data[i + 2] = val;
-            }
-        } else {
-            let min = 255, max = 0;
-            const grays = new Uint8Array(width * height);
-            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-                const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                grays[j] = g;
-                if (g < min) min = g;
-                if (g > max) max = g;
-            }
-            const range = (max - min) || 1;
-            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-                const stretched = ((grays[j] - min) / range) * 255;
-                data[i] = data[i + 1] = data[i + 2] = stretched;
-            }
-        }
-        ctx.putImageData(imgData, 0, 0);
+    function setAlgoMode(mode) {
+        algoMode = mode;
+        document.getElementById('algo-sharp').classList.toggle('active', mode === 'sharp');
+        document.getElementById('algo-soft').classList.toggle('active', mode === 'soft');
     }
 
     function saveDeviceName() {
@@ -399,7 +331,7 @@ BA456CD;Firma ABC"></textarea>
     async function startCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
             });
             const video = document.getElementById('video');
             video.srcObject = stream;
@@ -407,6 +339,28 @@ BA456CD;Firma ABC"></textarea>
         } catch (err) {
             alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.\n(' + err.message + ')');
         }
+    }
+
+    function preprocessCanvas(ctx, w, h, mode) {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        let min = 255, max = 0;
+        const grays = new Uint8Array(w * h);
+
+        for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            grays[p] = g;
+            if (g < min) min = g;
+            if (g > max) max = g;
+        }
+        const range = Math.max(1, max - min);
+
+        for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+            const norm = ((grays[p] - min) / range) * 255;
+            const val = (mode === 'sharp') ? (norm > 125 ? 255 : 0) : norm;
+            d[i] = d[i + 1] = d[i + 2] = val;
+        }
+        ctx.putImageData(imgData, 0, 0);
     }
 
     async function scanPlate() {
@@ -417,38 +371,39 @@ BA456CD;Firma ABC"></textarea>
         }
         const btn = document.getElementById('btn-scan');
         btn.disabled = true;
-        btn.textContent = scanMode === 'sharp' ? '⏳ Čítam (Ostrý režim)...' : '⏳ Čítam (Tieň/Odlesk)...';
+        btn.textContent = '⏳ Čítam ŠPZ...';
 
         const canvas = document.getElementById('canvas');
         const vw = video.videoWidth;
         const vh = video.videoHeight;
-        
-        // Väčší výrez zodpovedajúci novému širšiemu a vyššiemu rámiku
+
         const cropW = vw * 0.88;
-        const cropH = frameSize === 'tall' ? vh * 0.50 : vh * 0.31;
+        const cropH = vh * (frameMode === 2 ? 0.46 : 0.29);
         const cropX = (vw - cropW) / 2;
         const cropY = (vh - cropH) / 2;
 
         const scale = 2;
-        canvas.width = cropW * scale;
-        canvas.height = cropH * scale;
+        canvas.width = Math.round(cropW * scale);
+        canvas.height = Math.round(cropH * scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
 
-        preprocessImage(ctx, canvas.width, canvas.height, scanMode);
+        preprocessCanvas(ctx, canvas.width, canvas.height, algoMode);
 
         try {
-            // Pri dvojriadkovom rámiku použije blokové čítanie (PSM 6), pri širokom jednoriadkovom PSM 7
-            const psmMode = (frameSize === 'tall' || scanMode === 'soft') ? '6' : '7';
-            const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({
                 tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                tessedit_pageseg_mode: psmMode
+                tessedit_pageseg_mode: (frameMode === 2 || algoMode === 'soft') ? '6' : '7'
             });
-            const plate = cleanDetectedPlate(text);
-            if (plate.length >= 4 && plate.length <= 9) {
+            const { data: { text } } = await worker.recognize(canvas);
+            await worker.terminate();
+
+            const plate = cleanOcrPlate(text);
+            if (plate.length >= 4) {
                 verifyAndLog(plate);
             } else {
-                alert('Nejasný záber (' + (plate || 'nič') + '). Skús prepnúť režim alebo veľkosť rámika.');
+                alert('ŠPZ sa nepodarilo prečítať. Skús prepnúť režim alebo zadaj ručne.');
             }
         } catch (e) {
             alert('Chyba pri čítaní: ' + e.message);
@@ -509,46 +464,61 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function removeCar(plate) {
-        const entered = prompt('Pre vymazanie auta ' + plate + ' zadaj PIN:');
-        if (entered === null) return;
-        if (entered !== CAR_PIN && entered !== ADMIN_PIN) {
-            return alert('Nesprávny PIN kód!');
+        if (userRole !== 'admin') {
+            const entered = prompt('Zadaj PIN pre zmazanie auta:');
+            if (entered !== CAR_PIN && entered !== ADMIN_PIN) {
+                return alert('Nesprávny PIN.');
+            }
         }
-        await db.collection('allowed_cars').doc(plate).delete();
+        if (confirm('Odstrániť ' + plate + ' zo zoznamu?')) {
+            await db.collection('allowed_cars').doc(plate).delete();
+        }
     }
 
     async function parseAndUploadLines(text) {
+        if (!db) return alert('Databáza nie je pripojená.');
         const lines = text.split(/\r?\n/);
-        const batch = db.batch();
-        let count = 0;
+        const validItems = [];
 
         lines.forEach(line => {
             const clean = line.trim();
             if (!clean) return;
-            const parts = clean.split(/[;,]/);
-            const plate = normalizePlate(parts || '');
-            const owner = (parts || '').trim();
+            // Podpora pre bodkočiarku (;), čiarku (,) aj tabulátor z Excelu
+            const parts = clean.split(/[;,\t]/);
+            const plate = normalizePlate(parts[0]);
+            const owner = parts.slice(1).join(' ').trim();
             if (plate.length >= 3 && plate !== 'SPZ') {
-                const ref = db.collection('allowed_cars').doc(plate);
-                batch.set(ref, { owner: owner });
-                count++;
+                validItems.push({ plate, owner });
             }
         });
 
-        if (count > 0) {
-            await batch.commit();
-            alert('Úspešne uložených áut: ' + count);
-        } else {
-            alert('Nenašli sa žiadne platné riadky (formát: SPZ;Meno).');
+        if (validItems.length === 0) {
+            return alert('Nenašli sa žiadne platné riadky.\nPouži formát: SPZ;Meno (napr. NR123AB;Ján Novák)');
+        }
+
+        try {
+            // Rozdelenie na dávky po 400 záznamov kvôli limitu Firestore batch (500)
+            for (let i = 0; i < validItems.length; i += 400) {
+                const chunk = validItems.slice(i, i + 400);
+                const batch = db.batch();
+                chunk.forEach(item => {
+                    const ref = db.collection('allowed_cars').doc(item.plate);
+                    batch.set(ref, { owner: item.owner });
+                });
+                await batch.commit();
+            }
+            alert('Úspešne uložených áut: ' + validItems.length);
+        } catch (err) {
+            alert('Chyba pri ukladaní zoznamu: ' + err.message);
         }
     }
 
     function importCSV() {
         const fileInput = document.getElementById('csv-file');
-        if (!fileInput.files.length) return alert('Najprv vyber CSV súbor.');
+        if (!fileInput.files || !fileInput.files.length) return alert('Najprv vyber CSV súbor.');
         const reader = new FileReader();
         reader.onload = e => parseAndUploadLines(e.target.result);
-        reader.readAsText(fileInput.files, 'UTF-8');
+        reader.readAsText(fileInput.files[0], 'UTF-8');
     }
 
     function importBulkText() {
@@ -560,16 +530,16 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearDB() {
-        if (currentRole !== 'admin') {
-            const entered = prompt('Pre vymazanie CELÉHO zoznamu zadaj PIN správcu:');
-            if (entered === null) return;
-            if (entered !== ADMIN_PIN) return alert('Nesprávny PIN správcu!');
-        } else {
-            if (!confirm('Naozaj vymazať VŠETKY povolené autá z databázy?')) return;
+        if (userRole !== 'admin') {
+            if (prompt('Zadaj hlavný PIN správcu:') !== ADMIN_PIN) return alert('Nesprávny PIN správcu.');
         }
-        const batch = db.batch();
-        allowedCars.forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
-        await batch.commit();
+        if (!confirm('Naozaj vymazať VŠETKY povolené autá?')) return;
+        for (let i = 0; i < allowedCars.length; i += 400) {
+            const chunk = allowedCars.slice(i, i + 400);
+            const batch = db.batch();
+            chunk.forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
+            await batch.commit();
+        }
     }
 
     function renderDB() {
@@ -600,16 +570,16 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearHistory() {
-        if (currentRole !== 'admin') {
-            const entered = prompt('Pre vymazanie CELEJ histórie zadaj PIN správcu:');
-            if (entered === null) return;
-            if (entered !== ADMIN_PIN) return alert('Nesprávny PIN správcu!');
-        } else {
-            if (!confirm('Naozaj vymazať CELÚ históriu kontrol?')) return;
+        if (userRole !== 'admin') {
+            if (prompt('Zadaj hlavný PIN správcu:') !== ADMIN_PIN) return alert('Nesprávny PIN správcu.');
         }
-        const batch = db.batch();
-        scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
-        await batch.commit();
+        if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
+        for (let i = 0; i < scanHistory.length; i += 400) {
+            const chunk = scanHistory.slice(i, i + 400);
+            const batch = db.batch();
+            chunk.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
+            await batch.commit();
+        }
     }
 
     function exportCSV() {
