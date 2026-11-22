@@ -6,6 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-512.png">
     <title>Kontrola Parkovania</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -108,7 +110,8 @@
 
     <div class="section-box">
         <h3 style="margin-top:0;">3. Rýchle vloženie zoznamu (Copy-Paste)</h3>
-        <textarea id="bulk-text" rows="3" placeholder="NR123AB;Ján Novák&#10;BA456CD;Firma ABC"></textarea>
+        <textarea id="bulk-text" rows="3" placeholder="NR123AB;Ján Novák
+BA456CD;Firma ABC"></textarea>
         <button class="btn btn-outline" onclick="importBulkText()">📋 Uložiť vložený zoznam</button>
     </div>
 
@@ -124,42 +127,26 @@
         <label style="font-size: 0.8rem; color: #64748b; display:block; margin-bottom:4px;">Meno tohto mobilu / kontrolóra:</label>
         <div style="display:flex; gap:8px;">
             <input type="text" id="device-name" placeholder="Napr. Vrátnica 1" style="margin:0; padding:8px;">
-            <button class="btn btn-primary" onclick="saveDeviceName()" style="width:auto; margin:0; padding:8px 14px;">Uložiť</button>
+            <button class="btn btn-primary" style="width:auto; margin:0; padding:8px 15px;" onclick="saveDeviceName()">Uložiť</button>
         </div>
     </div>
 
     <div style="display:flex; gap:8px; margin-bottom:15px;">
-        <button class="btn btn-success" onclick="exportHistoryCSV()" style="margin:0;">📥 Stiahnuť do Excelu (CSV)</button>
+        <button class="btn btn-outline" style="margin:0;" onclick="exportCSV()">📥 Stiahnuť do Excelu (CSV)</button>
         <button class="btn btn-danger" onclick="clearHistory()">🔒 Zmazať</button>
     </div>
     <div id="history-list"></div>
 </div>
 
 <nav>
-    <button class="active" onclick="switchTab('scan', 'Skenovanie ŠPZ', this)">📷 Skener</button>
-    <button onclick="switchTab('db', 'Databáza povolení', this)">🚗 Povolené</button>
-    <button onclick="switchTab('history', 'História kontrol', this)">📋 História</button>
+    <button class="active" onclick="switchTab('scan', this)"><span>📷</span>Skener</button>
+    <button onclick="switchTab('db', this)"><span>🚗</span>Povolené</button>
+    <button onclick="switchTab('history', this)"><span>📋</span>História</button>
 </nav>
 
 <canvas id="canvas" style="display:none;"></canvas>
 
 <script>
-    const ADMIN_PIN = "1719";
-    let isAdminUnlocked = false;
-
-    function checkAdminPin() {
-        if (isAdminUnlocked) return true;
-        const entered = prompt("Zadaj správcovský PIN kód pre vymazanie:");
-        if (entered === ADMIN_PIN) {
-            isAdminUnlocked = true;
-            return true;
-        }
-        if (entered !== null) {
-            alert("❌ Nesprávny PIN kód!");
-        }
-        return false;
-    }
-
     const firebaseConfig = {
         apiKey: "AIzaSyDfx8YzBcDoszVAVE1fTPeathyjzg1ryyA",
         authDomain: "parkovanie-5b72d.firebaseapp.com",
@@ -169,363 +156,273 @@
         appId: "1:974462279794:web:649e27e3e07dbd1b6de2eb"
     };
 
+    const ADMIN_PIN = "1234";
     let db = null;
     let allowedCars = [];
     let scanHistory = [];
-    let deviceName = localStorage.getItem('park_device_name') || 'Mobil';
+    let deviceName = localStorage.getItem('park_device') || 'Mobil';
+
     document.getElementById('device-name').value = deviceName;
 
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+
+        db.collection('allowed_cars').onSnapshot(snapshot => {
+            allowedCars = snapshot.docs.map(doc => ({ plate: doc.id, ...doc.data() }));
+            allowedCars.sort((a, b) => a.plate.localeCompare(b.plate));
+            renderDB();
+            updateSyncStatus(true);
+        }, err => {
+            console.error(err);
+            updateSyncStatus(false, err.message);
+        });
+
+        db.collection('scan_history').orderBy('timestamp', 'desc').limit(100).onSnapshot(snapshot => {
+            scanHistory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderHistory();
+        });
+    } catch (e) {
+        updateSyncStatus(false, e.message);
+    }
+
+    function updateSyncStatus(ok, errMsg = '') {
+        const badge = document.getElementById('sync-status');
+        if (ok) {
+            badge.textContent = '🟢 Cloud OK';
+            badge.style.background = 'rgba(22, 163, 74, 0.85)';
+        } else {
+            badge.textContent = '🔴 Chyba cloudu';
+            badge.style.background = 'rgba(220, 38, 38, 0.85)';
+            if (errMsg) alert('Chyba databázy: ' + errMsg);
+        }
+    }
+
+    function normalizePlate(str) {
+        return str.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
     function saveDeviceName() {
-        const val = document.getElementById('device-name').value.trim();
-        if (val) {
-            deviceName = val;
-            localStorage.setItem('park_device_name', deviceName);
-            alert("Meno zariadenia uložené: " + deviceName);
-        }
+        const val = document.getElementById('device-name').value.trim() || 'Mobil';
+        deviceName = val;
+        localStorage.setItem('park_device', val);
+        alert('Meno zariadenia uložené: ' + val);
     }
 
-    function initFirebase() {
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            db.enablePersistence().catch(function() {});
-
-            db.collection("allowed_cars").orderBy("plate").onSnapshot(function(snapshot) {
-                allowedCars = [];
-                snapshot.forEach(function(doc) {
-                    allowedCars.push(Object.assign({ id: doc.id }, doc.data()));
-                });
-                renderDB();
-                document.getElementById('sync-status').innerText = '🟢 Online (' + allowedCars.length + ')';
-            }, function(error) {
-                document.getElementById('sync-status').innerText = '🔴 Chyba: ' + error.code;
-            });
-
-            db.collection("scan_history").orderBy("timestamp", "desc").limit(200).onSnapshot(function(snapshot) {
-                scanHistory = [];
-                snapshot.forEach(function(doc) {
-                    scanHistory.push(Object.assign({ id: doc.id }, doc.data()));
-                });
-                renderHistory();
-            });
-        } catch (e) {
-            document.getElementById('sync-status').innerText = '🔴 Chyba FB';
-            alert("Chyba pri spúšťaní Firebase: " + e.message);
-        }
+    function switchTab(tabName, btn) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
+        btn.classList.add('active');
+        const titles = { scan: 'Skenovanie ŠPZ', db: 'Povolené autá', history: 'História kontrol' };
+        document.getElementById('header-title').textContent = titles[tabName];
     }
 
+    let stream = null;
     async function startCamera() {
-        const startBtn = document.getElementById('cam-start-btn');
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
             });
             const video = document.getElementById('video');
             video.srcObject = stream;
-            startBtn.style.display = 'none';
+            document.getElementById('cam-start-btn').style.display = 'none';
         } catch (err) {
-            alert("Chyba kamery: " + err.name + ". Povoľ kameru v nastaveniach prehliadača.");
+            alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.\n(' + err.message + ')');
         }
-    }
-
-    function playBeep(isSuccess) {
-        try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            const ctx = new AudioCtx();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-
-            if (isSuccess) {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.15);
-            } else {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(220, ctx.currentTime);
-                osc.frequency.setValueAtTime(180, ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.8, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.5);
-            }
-        } catch (e) {}
-    }
-
-    function cleanPlate(text) {
-        return String(text).toUpperCase().replace(/[^A-Z0-9]/g, '');
-    }
-
-    function preprocessCanvas(ctx, width, height) {
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-            const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-            const contrast = 1.6;
-            let val = contrast * (gray - 128) + 128;
-            val = Math.max(0, Math.min(255, val));
-            d[i] = d[i + 1] = d[i + 2] = val;
-        }
-        ctx.putImageData(imgData, 0, 0);
     }
 
     async function scanPlate() {
-        const btn = document.getElementById('btn-scan');
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        
-        if (!video.videoWidth) {
-            startCamera();
-            return alert("Najprv zapni kameru.");
+        if (!stream) {
+            await startCamera();
+            return;
         }
-
+        const btn = document.getElementById('btn-scan');
         btn.disabled = true;
-        btn.innerText = "⏳ Čítam značku...";
+        btn.textContent = '⏳ Čítam ŠPZ...';
 
-        const cropW = video.videoWidth * 0.72;
-        const cropH = video.videoHeight * 0.20;
-        const cropX = (video.videoWidth - cropW) / 2;
-        const cropY = (video.videoHeight - cropH) / 2;
+        const canvas = document.getElementById('canvas');
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        const cropW = vw * 0.76;
+        const cropH = vh * 0.25;
+        const cropX = (vw - cropW) / 2;
+        const cropY = (vh - cropH) / 2;
 
         canvas.width = cropW;
         canvas.height = cropH;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-        preprocessCanvas(ctx, cropW, cropH);
 
         try {
-            const result = await Tesseract.recognize(canvas, 'eng', {
-                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                tessedit_pageseg_mode: '7'
+            const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
             });
-            
-            let detected = cleanPlate(result.data.text);
-            if (detected.startsWith('SK') && detected.length > 7) {
-                detected = detected.substring(2);
-            }
-
-            if (detected.length >= 4 && detected.length <= 9) {
-                verifyPlate(detected);
+            const plate = normalizePlate(text);
+            if (plate.length >= 4) {
+                verifyAndLog(plate);
             } else {
-                alert("Nečitateľné (" + (detected || "prázdne") + "). Namier presne na ŠPZ alebo ju zadaj ručne.");
+                alert('ŠPZ sa nepodarilo prečítať. Skús priblížiť alebo zadaj ručne.');
             }
         } catch (e) {
-            alert("Chyba pri rozpoznávaní: " + e.message);
+            alert('Chyba pri čítaní: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📸 Odfotiť a overiť ŠPZ';
         }
-
-        btn.disabled = false;
-        btn.innerText = "📸 Odfotiť a overiť ŠPZ";
     }
 
     function manualVerify() {
         const input = document.getElementById('manual-plate');
-        const plate = cleanPlate(input.value);
-        if (plate.length < 3) return alert("Zadaj platnú ŠPZ.");
-        verifyPlate(plate);
+        const plate = normalizePlate(input.value);
+        if (plate.length < 3) return alert('Zadaj platnú ŠPZ.');
+        verifyAndLog(plate);
         input.value = '';
     }
 
-    function verifyPlate(plate) {
-        const match = allowedCars.find(function(car) { return car.plate === plate; });
+    async function verifyAndLog(plate) {
+        const found = allowedCars.find(c => c.plate === plate);
         const banner = document.getElementById('result-banner');
         const statusEl = document.getElementById('result-status');
         const plateEl = document.getElementById('result-plate');
         const ownerEl = document.getElementById('result-owner');
 
         banner.style.display = 'block';
-        plateEl.innerText = plate;
+        plateEl.textContent = plate;
 
-        const now = new Date();
-        const dateTimeStr = now.toLocaleDateString('sk-SK') + ' ' + now.toLocaleTimeString('sk-SK');
-
-        let record = {
-            plate: plate,
-            time: dateTimeStr,
-            timestamp: Date.now(),
-            device: deviceName
-        };
-
-        if (match) {
+        if (found) {
             banner.className = 'ok';
-            statusEl.innerText = '✅ POVOLENÉ PARKOVANIE';
-            ownerEl.innerText = match.owner ? 'Majiteľ: ' + match.owner : 'Bez poznámky';
-            playBeep(true);
-            record.status = 'OK';
-            record.owner = match.owner || '-';
+            statusEl.textContent = '✅ POVOLENÉ VOZIDLO';
+            ownerEl.textContent = found.owner || 'Bez poznámky';
         } else {
             banner.className = 'fail';
-            statusEl.innerText = '🚨 NEPOVOLENÉ AUTO!';
-            ownerEl.innerText = 'Auto sa nenachádza v databáze';
-            playBeep(false);
-            if (navigator.vibrate) navigator.vibrate(400);
-            record.status = 'NEPOVOLENÉ';
-            record.owner = '-';
+            statusEl.textContent = '⛔ NEPOVOLENÉ VOZIDLO';
+            ownerEl.textContent = 'Nie je v zozname';
         }
 
         if (db) {
-            db.collection("scan_history").add(record).catch(function(err) { console.error(err); });
+            await db.collection('scan_history').add({
+                plate: plate,
+                allowed: !!found,
+                owner: found ? (found.owner || '') : 'Nepovolené',
+                device: deviceName,
+                timeStr: new Date().toLocaleString('sk-SK'),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
     }
 
     async function addCar() {
-        if (!db) return alert("Databáza nie je pripojená.");
-        const plateInput = document.getElementById('new-plate');
-        const ownerInput = document.getElementById('new-owner');
-        const plate = cleanPlate(plateInput.value);
-        const owner = ownerInput.value.trim();
+        const plate = normalizePlate(document.getElementById('new-plate').value);
+        const owner = document.getElementById('new-owner').value.trim();
+        if (plate.length < 3) return alert('Zadaj správnu ŠPZ.');
 
-        if (plate.length < 3) return alert("Zadaj správnu ŠPZ.");
-        if (allowedCars.some(function(c) { return c.plate === plate; })) return alert("Táto ŠPZ už v databáze je.");
-
-        await db.collection("allowed_cars").doc(plate).set({ plate: plate, owner: owner });
-        plateInput.value = '';
-        ownerInput.value = '';
+        await db.collection('allowed_cars').doc(plate).set({ owner: owner });
+        document.getElementById('new-plate').value = '';
+        document.getElementById('new-owner').value = '';
     }
 
-    async function processLines(rawText) {
-        if (!db) return 0;
-        const lines = rawText.split(/?
-/);
+    async function removeCar(plate) {
+        if (confirm('Odstrániť ' + plate + ' zo zoznamu?')) {
+            await db.collection('allowed_cars').doc(plate).delete();
+        }
+    }
+
+    async function parseAndUploadLines(text) {
+        const lines = text.split(/\r?\n/);
         const batch = db.batch();
-        let added = 0;
+        let count = 0;
 
-        lines.forEach(function(line) {
-            if (!line.trim()) return;
-            const parts = line.split(/[;,	]/);
-            const plate = cleanPlate(parts[0] || '');
-            const owner = (parts[1] || '').trim();
-            
-            if (plate === 'SPZ' || plate === 'ZNACKA') return;
-
-            if (plate.length >= 3 && !allowedCars.some(function(c) { return c.plate === plate; })) {
-                const docRef = db.collection("allowed_cars").doc(plate);
-                batch.set(docRef, { plate: plate, owner: owner });
-                added++;
+        lines.forEach(line => {
+            const clean = line.trim();
+            if (!clean) return;
+            const parts = clean.split(/[;,]/);
+            const plate = normalizePlate(parts || '');
+            const owner = (parts || '').trim();
+            if (plate.length >= 3 && plate !== 'SPZ') {
+                const ref = db.collection('allowed_cars').doc(plate);
+                batch.set(ref, { owner: owner });
+                count++;
             }
         });
 
-        if (added > 0) {
+        if (count > 0) {
             await batch.commit();
+            alert('Úspešne uložených áut: ' + count);
+        } else {
+            alert('Nenašli sa žiadne platné riadky (formát: SPZ;Meno).');
         }
-        return added;
     }
 
     function importCSV() {
         const fileInput = document.getElementById('csv-file');
-        const file = fileInput.files[0];
-        if (!file) return alert("Najprv vyber CSV súbor z mobilu.");
-
+        if (!fileInput.files.length) return alert('Najprv vyber CSV súbor.');
         const reader = new FileReader();
-        reader.onload = async function(e) {
-            const added = await processLines(e.target.result);
-            alert("Hotovo! Do cloudu pridaných " + added + " nových áut.");
-            fileInput.value = '';
-        };
-        reader.readAsText(file, 'UTF-8');
+        reader.onload = e => parseAndUploadLines(e.target.result);
+        reader.readAsText(fileInput.files, 'UTF-8');
     }
 
-    async function importBulkText() {
-        const area = document.getElementById('bulk-text');
-        if (!area.value.trim()) return alert("Vlož najprv zoznam ŠPZ.");
-        const added = await processLines(area.value);
-        alert("Hotovo! Do cloudu pridaných " + added + " nových áut.");
-        area.value = '';
-    }
-
-    async function deleteCar(plate) {
-        if (!checkAdminPin()) return;
-        if (db) {
-            await db.collection("allowed_cars").doc(plate).delete();
-        }
+    function importBulkText() {
+        const txt = document.getElementById('bulk-text').value;
+        if (!txt.trim()) return alert('Vlož zoznam do poľa.');
+        parseAndUploadLines(txt).then(() => {
+            document.getElementById('bulk-text').value = '';
+        });
     }
 
     async function clearDB() {
-        if (!db) return;
-        if (!checkAdminPin()) return;
-        if (confirm("Naozaj chceš vymazať VŠETKY povolené autá zo všetkých mobilov?")) {
-            const batch = db.batch();
-            allowedCars.forEach(function(car) {
-                batch.delete(db.collection("allowed_cars").doc(car.plate));
-            });
-            await batch.commit();
-        }
+        if (prompt('Zadaj PIN správcu (' + ADMIN_PIN + '):') !== ADMIN_PIN) return alert('Nesprávny PIN.');
+        const batch = db.batch();
+        allowedCars.forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
+        await batch.commit();
     }
 
     function renderDB() {
-        document.getElementById('db-count').innerText = allowedCars.length;
+        document.getElementById('db-count').textContent = allowedCars.length;
         const list = document.getElementById('db-list');
-        list.innerHTML = allowedCars.map(function(car) {
-            return '<div class="card">' +
-                '<div>' +
-                    '<span class="plate-badge">' + car.plate + '</span>' +
-                    '<div class="meta">' + (car.owner || 'Bez poznámky') + '</div>' +
-                '</div>' +
-                '<button class="btn btn-danger" onclick="deleteCar('' + car.plate + '')">🔒 X</button>' +
-            '</div>';
-        }).join('');
+        list.innerHTML = allowedCars.map(c => `
+            <div class="card">
+                <div>
+                    <span class="plate-badge">${c.plate}</span>
+                    <div class="meta">${c.owner || '—'}</div>
+                </div>
+                <button class="btn btn-danger" onclick="removeCar('${c.plate}')">Zmazať</button>
+            </div>
+        `).join('');
     }
 
     function renderHistory() {
         const list = document.getElementById('history-list');
-        if (scanHistory.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:#64748b;">Zatiaľ žiadne záznamy.</p>';
-            return;
-        }
-        list.innerHTML = scanHistory.map(function(item) {
-            const color = item.status === 'OK' ? 'var(--success)' : 'var(--danger)';
-            return '<div class="card">' +
-                '<div>' +
-                    '<span class="status-dot" style="background:' + color + '"></span>' +
-                    '<span class="plate-badge">' + item.plate + '</span>' +
-                    '<strong style="color:' + color + '; margin-left:6px;">' + item.status + '</strong>' +
-                    '<div class="meta">' + item.time + ' • ' + item.owner + ' (' + (item.device || 'Mobil') + ')</div>' +
-                '</div>' +
-            '</div>';
-        }).join('');
-    }
-
-    function exportHistoryCSV() {
-        if (scanHistory.length === 0) return alert("História je prázdna.");
-        let csv = "﻿Datum a cas;SPZ;Vysledok;Majitel;Zariadenie
-";
-        scanHistory.forEach(function(r) {
-            csv += r.time + ";" + r.plate + ";" + r.status + ";" + r.owner + ";" + (r.device || 'Mobil') + "
-";
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "kontrola_parkovania_" + new Date().toISOString().slice(0,10) + ".csv";
-        link.click();
+        list.innerHTML = scanHistory.map(h => `
+            <div class="card">
+                <div>
+                    <span class="status-dot" style="background:${h.allowed ? 'var(--success)' : 'var(--danger)'}"></span>
+                    <span class="plate-badge">${h.plate}</span>
+                    <div class="meta">${h.owner} • ${h.timeStr || ''} (${h.device || 'Mobil'})</div>
+                </div>
+            </div>
+        `).join('');
     }
 
     async function clearHistory() {
-        if (!db) return;
-        if (!checkAdminPin()) return;
-        if (confirm("Vymazať zobrazenú históriu kontrol zo cloudu?")) {
-            const batch = db.batch();
-            scanHistory.forEach(function(item) {
-                batch.delete(db.collection("scan_history").doc(item.id));
-            });
-            await batch.commit();
-        }
+        if (prompt('Zadaj PIN správcu (' + ADMIN_PIN + '):') !== ADMIN_PIN) return alert('Nesprávny PIN.');
+        const batch = db.batch();
+        scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
+        await batch.commit();
     }
 
-    function switchTab(tabId, title, btn) {
-        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-        document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('active'); });
-        document.getElementById('tab-' + tabId).classList.add('active');
-        btn.classList.add('active');
-        document.getElementById('header-title').innerText = title;
+    function exportCSV() {
+        let csv = '\uFEFFCas;SPZ;Stav;Majitel;Kontrolor\n';
+        scanHistory.forEach(h => {
+            csv += `${h.timeStr || ''};${h.plate};${h.allowed ? 'POVOLENE' : 'NEPOVOLENE'};${h.owner || ''};${h.device || ''}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'kontrola_parkovania.csv';
+        link.click();
     }
-
-    window.addEventListener('load', function() {
-        initFirebase();
-        startCamera();
-    });
 </script>
 </body>
 </html>
