@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <title>Kontrola Parkovania</title>
+    <title>Kontrola Parkovania v1.4</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -22,7 +22,13 @@
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; padding: 0; background: var(--bg); color: var(--text); padding-bottom: 75px; }
         header { background: var(--primary); color: white; padding: 14px 15px; text-align: center; font-weight: bold; font-size: 1.15rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+        .ver-badge { font-size: 0.72rem; background: rgba(0,0,0,0.22); padding: 2px 7px; border-radius: 6px; font-weight: normal; margin-left: 6px; }
         .sync-badge { font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; }
+        
+        /* Uzamykacia obrazovka */
+        #lock-screen { position: fixed; inset: 0; background: #0f172a; color: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .lock-box { background: #1e293b; padding: 25px 20px; border-radius: 16px; width: 100%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+        #login-pin { text-align: center; font-size: 1.6rem; letter-spacing: 8px; font-weight: bold; padding: 12px; border-radius: 10px; border: 2px solid #334155; background: #0f172a; color: white; margin: 15px 0; width: 100%; }
         
         nav { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; border-top: 1px solid #cbd5e1; z-index: 10; }
         nav button { flex: 1; padding: 12px 5px; border: none; background: none; font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -62,9 +68,23 @@
 </head>
 <body>
 
+<div id="lock-screen">
+    <div class="lock-box">
+        <div style="font-size: 2.2rem; margin-bottom: 5px;">🔒</div>
+        <h2 style="margin: 0 0 5px 0;">Kontrola Parkovania</h2>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px;">Verzia v1.4 • Zadaj prístupový PIN</div>
+        <input type="password" id="login-pin" inputmode="numeric" maxlength="6" placeholder="••••" onkeyup="if(event.key==='Enter') unlockApp()">
+        <button class="btn btn-primary" style="margin-bottom: 0;" onclick="unlockApp()">Odomknúť aplikáciu</button>
+        <div id="login-error" style="color: #f87171; font-size: 0.85rem; margin-top: 10px; display: none;">Nesprávny PIN kód!</div>
+    </div>
+</div>
+
 <header>
-    <span id="header-title">Skenovanie ŠPZ</span>
-    <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
+    <div><span id="header-title">Skenovanie ŠPZ</span><span class="ver-badge">v1.4</span></div>
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
+        <button onclick="lockApp()" title="Zamknúť" style="background:rgba(255,255,255,0.2); border:none; color:white; border-radius:8px; padding:4px 7px; cursor:pointer; font-size:0.85rem;">🔒</button>
+    </div>
 </header>
 
 <div id="tab-scan" class="tab active">
@@ -156,6 +176,37 @@ BA456CD;Firma ABC"></textarea>
 
     const ADMIN_PIN = "1719";
     const CAR_PIN = "1789";
+
+    let currentRole = sessionStorage.getItem('park_role') || null;
+    if (currentRole === 'admin' || currentRole === 'car') {
+        document.getElementById('lock-screen').style.display = 'none';
+    }
+
+    function unlockApp() {
+        const val = document.getElementById('login-pin').value.trim();
+        const err = document.getElementById('login-error');
+        if (val === ADMIN_PIN) {
+            currentRole = 'admin';
+            sessionStorage.setItem('park_role', 'admin');
+            document.getElementById('lock-screen').style.display = 'none';
+            err.style.display = 'none';
+        } else if (val === CAR_PIN) {
+            currentRole = 'car';
+            sessionStorage.setItem('park_role', 'car');
+            document.getElementById('lock-screen').style.display = 'none';
+            err.style.display = 'none';
+        } else {
+            err.style.display = 'block';
+            document.getElementById('login-pin').value = '';
+        }
+    }
+
+    function lockApp() {
+        currentRole = null;
+        sessionStorage.removeItem('park_role');
+        document.getElementById('login-pin').value = '';
+        document.getElementById('lock-screen').style.display = 'flex';
+    }
 
     let db = null;
     let allowedCars = [];
@@ -324,10 +375,8 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function removeCar(plate) {
-        const pin = prompt('Zadaj PIN pre vymazanie auta ' + plate + ':');
-        if (pin !== CAR_PIN && pin !== ADMIN_PIN) {
-            return alert('Nesprávny PIN!');
-        }
+        const pin = prompt('Zadaj PIN pre zmazanie auta (' + plate + '):');
+        if (pin !== CAR_PIN && pin !== ADMIN_PIN) return alert('Nesprávny PIN!');
         await db.collection('allowed_cars').doc(plate).delete();
     }
 
@@ -374,9 +423,7 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearDB() {
-        if (prompt('Zadaj ADMIN PIN pre vymazanie celého zoznamu:') !== ADMIN_PIN) {
-            return alert('Nesprávny ADMIN PIN!');
-        }
+        if (prompt('Zadaj hlavný PIN správcu:') !== ADMIN_PIN) return alert('Nesprávny PIN!');
         const batch = db.batch();
         allowedCars.forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
         await batch.commit();
@@ -410,9 +457,7 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearHistory() {
-        if (prompt('Zadaj ADMIN PIN pre vymazanie histórie:') !== ADMIN_PIN) {
-            return alert('Nesprávny ADMIN PIN!');
-        }
+        if (prompt('Zadaj hlavný PIN správcu:') !== ADMIN_PIN) return alert('Nesprávny PIN!');
         const batch = db.batch();
         scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
         await batch.commit();
