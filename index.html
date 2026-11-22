@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <title>Kontrola Parkovania v1.13</title>
+    <title>Kontrola Parkovania</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -21,90 +21,100 @@
         }
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; padding: 0; background: var(--bg); color: var(--text); padding-bottom: 75px; }
-        header { background: var(--primary); color: white; padding: 12px 14px; font-weight: bold; font-size: 1.05rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-        .header-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .ver-badge { font-size: 0.72rem; background: rgba(0,0,0,0.28); padding: 2px 7px; border-radius: 6px; font-weight: normal; }
-        .user-badge { font-size: 0.72rem; background: rgba(255,255,255,0.22); padding: 2px 7px; border-radius: 6px; font-weight: 600; }
-        .header-right { display: flex; align-items: center; gap: 6px; }
-        .sync-badge { font-size: 0.72rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; white-space: nowrap; }
-        .lock-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        
+        /* Prihlasovacia obrazovka */
+        #lock-screen {
+            position: fixed; inset: 0; background: var(--primary); color: white;
+            z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; text-align: center;
+        }
+        .lock-box {
+            background: white; color: var(--text); padding: 28px 22px; border-radius: 16px;
+            width: 100%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .lock-input {
+            width: 100%; padding: 13px; border: 2px solid #cbd5e1; border-radius: 10px;
+            font-size: 1.05rem; margin-bottom: 12px;
+        }
+        .lock-pin {
+            text-align: center; letter-spacing: 3px; font-weight: bold; font-size: 1.2rem;
+        }
 
+        header { background: var(--primary); color: white; padding: 12px 15px; font-weight: bold; font-size: 1.1rem; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+        .ver-tag { font-size: 0.72rem; background: rgba(0,0,0,0.22); padding: 2px 7px; border-radius: 6px; margin-left: 6px; font-weight: normal; }
+        .user-tag { font-size: 0.72rem; background: rgba(255,255,255,0.22); padding: 3px 8px; border-radius: 8px; font-weight: 600; }
+        .sync-badge { font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-weight: normal; }
+        
         nav { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; border-top: 1px solid #cbd5e1; z-index: 10; }
-        nav button { flex: 1; padding: 10px 4px; border: none; background: none; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        nav button { flex: 1; padding: 12px 4px; border: none; background: none; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
         nav button.active { color: var(--primary); border-top: 3px solid var(--primary); }
-
+        
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
-
-        .camera-box { position: relative; width: 100%; height: 270px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; }
+        
+        .camera-box { position: relative; width: 100%; height: 280px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
+        .camera-box.tall { height: 320px; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
         .scan-frame.tall { height: 136px; }
-        .scan-hint { position: absolute; bottom: 8px; width: 100%; text-align: center; color: white; font-size: 0.82rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
-        #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-
-        .mode-row { display: flex; gap: 6px; margin-bottom: 10px; }
-        .mode-btn { flex: 1; padding: 8px 6px; border: 1px solid #cbd5e1; background: white; border-radius: 8px; font-size: 0.78rem; font-weight: 600; color: #475569; cursor: pointer; text-align: center; }
-        .mode-btn.active { background: #eff6ff; border-color: var(--primary); color: var(--primary); }
+        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; }
+        #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+        
+        .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 8px; }
+        .mode-btn { flex: 1; padding: 8px 6px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; background: transparent; color: #475569; }
+        .mode-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-outline { background: white; border: 1px solid #cbd5e1; color: var(--text); }
-        .btn-danger { background: var(--danger); color: white; padding: 7px 11px; font-size: 0.8rem; width: auto; margin: 0; flex-shrink: 0; }
-
+        .btn-danger { background: var(--danger); color: white; padding: 8px 12px; font-size: 0.82rem; width: auto; margin: 0; flex-shrink: 0; }
+        
         input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; margin-bottom: 10px; background: white; }
         .manual-check { display: flex; gap: 8px; margin-top: 10px; }
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 16px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
+        #result-banner { display: none; padding: 18px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
-        #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 4px 0; word-break: break-all; }
-
+        #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; word-break: break-all; }
+        
         .card { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .card-info { flex: 1; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
-        .plate-badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 1.05rem; display: inline-block; }
-        .role-badge { font-size: 0.72rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
-        .role-A { background: #dbeafe; color: #1d4ed8; }
+        .card-info { min-width: 0; flex: 1; overflow-wrap: break-word; }
+        .plate-badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 1.1rem; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+        .role-badge { padding: 3px 7px; border-radius: 5px; font-size: 0.75rem; font-weight: bold; margin-left: 6px; }
+        .role-A { background: #dbeafe; color: #1e40af; }
         .role-U { background: #f1f5f9; color: #475569; }
-        .meta { font-size: 0.83rem; color: #64748b; margin-top: 4px; }
+        .meta { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
         .section-box { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-
-        #lock-screen { position: fixed; inset: 0; background: #0f172a; color: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .lock-box { background: #1e293b; padding: 24px; border-radius: 16px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .lock-box input { background: #0f172a; border: 1px solid #334155; color: white; font-size: 1.1rem; padding: 12px; margin-bottom: 12px; border-radius: 10px; }
-        .lock-box input#login-pin { text-align: center; font-size: 1.4rem; letter-spacing: 6px; }
-        .lock-error { color: #f87171; font-size: 0.85rem; margin-bottom: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
 
 <div id="lock-screen">
     <div class="lock-box">
-        <div style="font-size: 2.4rem; margin-bottom: 8px;">🅿️</div>
-        <h2 style="margin: 0 0 6px 0;">Kontrola Parkovania</h2>
-        <p style="color: #94a3b8; font-size: 0.88rem; margin: 0 0 16px 0;">Prihláste sa menom a PIN kódom</p>
-        <input type="text" id="login-name" placeholder="Meno používateľa (napr. admin)" autocomplete="username">
-        <input type="password" id="login-pin" inputmode="numeric" maxlength="10" placeholder="PIN kód" autocomplete="current-password">
-        <div id="lock-error" class="lock-error"></div>
-        <button class="btn btn-primary" style="margin-bottom: 8px;" onclick="unlockApp()">Odomknúť</button>
-        <div id="lock-cloud-status" style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">⏳ Pripájam databázu...</div>
-        <div style="font-size: 0.72rem; color: #64748b; margin-top: 6px;">Verzia v1.13</div>
+        <div style="font-size: 2.3rem; margin-bottom: 6px;">🔐</div>
+        <h2 style="margin: 0 0 6px 0; font-size: 1.25rem;">Kontrola Parkovania</h2>
+        <p style="color: #64748b; font-size: 0.88rem; margin: 0 0 16px 0;">Prihlásenie do systému</p>
+        <input type="text" id="login-name" class="lock-input" placeholder="Meno užívateľa" autocomplete="username" onkeydown="if(event.key==='Enter') document.getElementById('login-pin').focus()">
+        <input type="password" id="login-pin" class="lock-input lock-pin" inputmode="numeric" placeholder="PIN" onkeydown="if(event.key==='Enter') unlockApp()">
+        <button class="btn btn-primary" style="margin-bottom: 0;" onclick="unlockApp()">Prihlásiť sa</button>
+        <div id="lock-error" style="color: var(--danger); font-size: 0.85rem; margin-top: 10px; display: none;">Nesprávne meno alebo PIN</div>
+        <div style="color: #94a3b8; font-size: 0.75rem; margin-top: 14px;">Verzia v1.14</div>
     </div>
 </div>
 
 <header>
-    <div class="header-left">
+    <div>
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="ver-badge">v1.13</span>
-        <span id="current-user-badge" class="user-badge"></span>
+        <span class="ver-tag">v1.14</span>
     </div>
-    <div class="header-right">
-        <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
-        <button class="lock-btn" title="Odhlásiť a zamknúť" onclick="lockApp()">🔒</button>
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span id="current-user-badge" class="user-tag"></span>
+        <span id="sync-status" class="sync-badge">⏳</span>
+        <button onclick="lockApp()" title="Odhlásiť sa" style="background:rgba(0,0,0,0.2); border:none; color:white; padding:4px 8px; border-radius:8px; cursor:pointer; font-size:0.85rem;">🔒</button>
     </div>
 </header>
 
@@ -115,29 +125,29 @@
         <div id="result-owner" style="font-size: 0.95rem;"></div>
     </div>
 
-    <div class="camera-box">
+    <div class="camera-box" id="camera-box">
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
-        <div id="scan-frame" class="scan-frame"></div>
-        <div class="scan-hint">Zameraj ŠPZ do modrého rámika</div>
+        <div class="scan-frame" id="scan-frame"></div>
+        <div class="scan-hint">Zameraj ŠPZ do modrého okna</div>
     </div>
 
-    <div class="mode-row">
-        <button id="algo-sharp" class="mode-btn active" onclick="setAlgo('sharp')">⚡ Ostrý (Denný)</button>
-        <button id="algo-soft" class="mode-btn" onclick="setAlgo('soft')">🌗 Tieň / Odlesk</button>
+    <div class="mode-switch">
+        <button id="mode-1" class="mode-btn active" onclick="setOcrMode(1)">⚡ Ostrý (Denný)</button>
+        <button id="mode-2" class="mode-btn" onclick="setOcrMode(2)">🌗 Tieň / Odlesk</button>
     </div>
 
-    <div class="mode-row">
-        <button id="frame-wide" class="mode-btn active" onclick="setFrame('wide')">▭ Široký rámik (1 riadok)</button>
-        <button id="frame-tall" class="mode-btn" onclick="setFrame('tall')">▢ Vysoký rámik (2 riadky)</button>
+    <div class="mode-switch">
+        <button id="frame-1" class="mode-btn active" onclick="setFrameSize(1)">▭ Široký rámik (1 riadok)</button>
+        <button id="frame-2" class="mode-btn" onclick="setFrameSize(2)">▢ Vysoký rámik (2 riadky)</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate()">📸 Odfotiť a overiť ŠPZ</button>
-
-    <div style="text-align: center; color: #64748b; font-size: 0.85rem; margin: 10px 0;">— alebo zadaj ručne (napr. pri špinavej značke) —</div>
-
+    
+    <div style="text-align: center; color: #64748b; font-size: 0.85rem; margin: 10px 0;">— alebo zadaj ručne —</div>
+    
     <div class="manual-check">
-        <input type="text" id="manual-plate" placeholder="Napr. NR123AB" maxlength="10" oninput="this.value = this.value.toUpperCase()">
+        <input type="text" id="manual-plate" placeholder="NAPR. NR123AB" maxlength="10" oninput="this.value = this.value.toUpperCase()">
         <button class="btn btn-success" onclick="manualVerify()">Overiť</button>
     </div>
 </div>
@@ -145,59 +155,63 @@
 <div id="tab-db" class="tab">
     <div class="section-box">
         <h3 style="margin-top:0;">1. Pridať jedno auto (do cloudu)</h3>
-        <input type="text" id="new-plate" placeholder="ŠPZ (napr. BA999XX)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+        <input type="text" id="new-plate" placeholder="ŠPZ (NAPR. BA999XX)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
         <input type="text" id="new-owner" placeholder="Meno majiteľa / Firma / Poznámka">
         <button class="btn btn-primary" onclick="addCar()">+ Uložiť pre všetky mobily</button>
     </div>
 
     <div class="section-box">
         <h3 style="margin-top:0;">2. Vloženie zoznamu zo súboru</h3>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber stiahnutý <b>.csv</b> súbor z pamäte (formát: <code>SPZ;Meno</code>).</p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Vyber <b>.csv</b> alebo <b>.txt</b> súbor (formát: <code>SPZ;Meno</code>).</p>
         <input type="file" id="csv-file" accept=".csv,.txt,text/csv,text/plain" style="font-size: 0.9rem; margin-bottom: 10px; width: 100%;">
-        <button class="btn btn-outline" onclick="importCSV()">📂 Nahrať vybraný CSV súbor</button>
+        <button class="btn btn-outline" onclick="importCSV()">📂 Nahrať vybraný súbor</button>
     </div>
 
     <div class="section-box">
         <h3 style="margin-top:0;">3. Rýchle vloženie zoznamu</h3>
-        <textarea id="bulk-text" rows="3" placeholder="NR123AB;Ján Novák
+        <textarea id="bulk-text" rows="4" placeholder="NR123AB;Ján Novák
 BA456CD;Firma ABC"></textarea>
         <button class="btn btn-outline" onclick="importBulkText()">📋 Uložiť vložený zoznam</button>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <strong>Povolené autá (<span id="db-count">0</span>)</strong>
-        <button class="btn btn-danger" onclick="clearDB()">🔒 Vymazať všetko</button>
+        <button id="btn-clear-db" class="btn btn-danger" onclick="clearDB()">🔒 Vymazať všetko</button>
     </div>
     <div id="db-list"></div>
 </div>
 
 <div id="tab-history" class="tab">
-    <div class="section-box" style="padding: 12px 15px;">
-        <div style="font-size: 0.85rem; color: #475569;">Prihlásený používateľ: <strong id="history-user-info">—</strong></div>
-        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Všetky kontroly sa automaticky zapisujú pod vaším menom.</div>
+    <div class="section-box">
+        <h3 style="margin-top:0; font-size:1rem;">🔑 Zmena môjho PIN kódu</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="password" id="old-pin" inputmode="numeric" placeholder="Starý PIN" style="flex:1; min-width:110px; margin-bottom:8px;">
+            <input type="password" id="new-my-pin" inputmode="numeric" placeholder="Nový PIN" style="flex:1; min-width:110px; margin-bottom:8px;">
+        </div>
+        <button class="btn btn-outline" style="margin-bottom:0; padding:10px;" onclick="changeMyPin()">Uložiť nový PIN</button>
     </div>
 
     <div style="display:flex; gap:8px; margin-bottom:15px;">
         <button class="btn btn-outline" style="margin:0;" onclick="exportCSV()">📥 Stiahnuť do Excelu (CSV)</button>
-        <button class="btn btn-danger" onclick="clearHistory()">🔒 Zmazať</button>
+        <button id="btn-clear-hist" class="btn btn-danger" onclick="clearHistory()">🔒 Zmazať</button>
     </div>
     <div id="history-list"></div>
 </div>
 
 <div id="tab-users" class="tab">
     <div class="section-box">
-        <h3 style="margin-top:0;">Pridať alebo upraviť používateľa</h3>
-        <input type="text" id="user-name" placeholder="Meno používateľa (napr. Jozef)">
-        <input type="text" id="user-pin" inputmode="numeric" maxlength="10" placeholder="PIN kód (napr. 1789)">
-        <select id="user-role">
-            <option value="U">U – User (štandardný používateľ)</option>
-            <option value="A">A – Admin (správca + hromadné mazanie + správa používateľov)</option>
+        <h3 style="margin-top:0;">Pridať / Upraviť užívateľa</h3>
+        <input type="text" id="usr-name" placeholder="Meno užívateľa (napr. Jozef)">
+        <input type="password" id="usr-pin" inputmode="numeric" placeholder="Nový PIN kód">
+        <select id="usr-role">
+            <option value="U">U — Užívateľ (Skenovanie a správa áut)</option>
+            <option value="A">A — Admin (Plné práva + správa užívateľov)</option>
         </select>
-        <button class="btn btn-primary" onclick="saveUser()">+ Uložiť používateľa</button>
+        <button class="btn btn-primary" onclick="saveUser()">+ Uložiť užívateľa</button>
     </div>
 
-    <div style="margin-bottom: 10px;">
-        <strong>Zoznam používateľov (<span id="users-count">0</span>)</strong>
+    <div style="margin-bottom:10px;">
+        <strong>Registrovaní užívatelia (<span id="usr-count">0</span>)</strong>
     </div>
     <div id="users-list"></div>
 </div>
@@ -206,7 +220,7 @@ BA456CD;Firma ABC"></textarea>
     <button class="active" onclick="switchTab('scan', this)"><span>📷</span>Skener</button>
     <button onclick="switchTab('db', this)"><span>🚗</span>Povolené</button>
     <button onclick="switchTab('history', this)"><span>📋</span>História</button>
-    <button id="nav-users-btn" style="display:none;" onclick="switchTab('users', this)"><span>👤</span>Useri</button>
+    <button id="nav-users" style="display:none;" onclick="switchTab('users', this)"><span>👤</span>Užívatelia</button>
 </nav>
 
 <canvas id="canvas" style="display:none;"></canvas>
@@ -229,103 +243,19 @@ BA456CD;Firma ABC"></textarea>
     let scanHistory = [];
     let appUsers = [];
     let currentUser = null;
-    let currentAlgo = 'sharp';
-    let currentFrame = 'wide';
-
-    function normUser(str) {
-        return (str || '').trim().toLowerCase();
-    }
-
-    function escapeHtml(str) {
-        return String(str || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function applyLoggedUser(userObj) {
-        currentUser = userObj;
-        sessionStorage.setItem('park_logged_user', JSON.stringify(userObj));
-        document.getElementById('lock-screen').style.display = 'none';
-        document.getElementById('lock-error').textContent = '';
-        document.getElementById('current-user-badge').textContent = userObj.name + ' (' + userObj.role + ')';
-        document.getElementById('history-user-info').textContent = userObj.name + ' [' + (userObj.role === 'A' ? 'Admin' : 'User') + ']';
-        document.getElementById('nav-users-btn').style.display = (userObj.role === 'A') ? 'flex' : 'none';
-    }
-
-    const savedUserRaw = sessionStorage.getItem('park_logged_user');
-    if (savedUserRaw) {
-        try {
-            const parsed = JSON.parse(savedUserRaw);
-            if (parsed && parsed.name && parsed.pin) {
-                applyLoggedUser(parsed);
-            }
-        } catch (e) {}
-    }
-
-    function unlockApp() {
-        const nameInput = document.getElementById('login-name').value.trim();
-        const pinInput = document.getElementById('login-pin').value.trim();
-        const errEl = document.getElementById('lock-error');
-
-        if (!nameInput || !pinInput) {
-            errEl.textContent = 'Zadajte meno aj PIN kód.';
-            return;
-        }
-
-        if (normUser(nameInput) === SUPERADMIN_NAME && pinInput === SUPERADMIN_PIN) {
-            applyLoggedUser({ id: 'superadmin', name: 'admin', pin: SUPERADMIN_PIN, role: 'A', isSuper: true });
-            document.getElementById('login-pin').value = '';
-            return;
-        }
-
-        const matched = appUsers.find(u => normUser(u.name) === normUser(nameInput) && String(u.pin) === pinInput);
-        if (matched) {
-            applyLoggedUser({ id: matched.id, name: matched.name, pin: String(matched.pin), role: matched.role || 'U', isSuper: false });
-            document.getElementById('login-pin').value = '';
-            return;
-        }
-
-        errEl.textContent = 'Nesprávne meno alebo PIN kód.';
-        document.getElementById('login-pin').value = '';
-    }
-
-    function lockApp() {
-        currentUser = null;
-        sessionStorage.removeItem('park_logged_user');
-        document.getElementById('login-pin').value = '';
-        document.getElementById('lock-error').textContent = '';
-        document.getElementById('lock-screen').style.display = 'flex';
-        const firstBtn = document.querySelector('nav button');
-        if (firstBtn) switchTab('scan', firstBtn);
-    }
-
-    document.getElementById('login-name').addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('login-pin').focus();
-    });
-    document.getElementById('login-pin').addEventListener('keydown', e => {
-        if (e.key === 'Enter') unlockApp();
-    });
+    let ocrMode = 1;
+    let frameSize = 1;
 
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
 
         db.collection('app_users').onSnapshot(snapshot => {
-            appUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            appUsers = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(u => (u.name || '').toLowerCase() !== SUPERADMIN_NAME);
             appUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             renderUsers();
-
-            if (currentUser && !currentUser.isSuper) {
-                const fresh = appUsers.find(u => u.id === currentUser.id);
-                if (!fresh || String(fresh.pin) !== String(currentUser.pin)) {
-                    lockApp();
-                } else {
-                    applyLoggedUser({ id: fresh.id, name: fresh.name, pin: String(fresh.pin), role: fresh.role || 'U', isSuper: false });
-                }
-            }
         });
 
         db.collection('allowed_cars').onSnapshot(snapshot => {
@@ -338,7 +268,7 @@ BA456CD;Firma ABC"></textarea>
             updateSyncStatus(false, err.message);
         });
 
-        db.collection('scan_history').orderBy('timestamp', 'desc').limit(150).onSnapshot(snapshot => {
+        db.collection('scan_history').orderBy('timestamp', 'desc').limit(100).onSnapshot(snapshot => {
             scanHistory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderHistory();
         });
@@ -346,81 +276,247 @@ BA456CD;Firma ABC"></textarea>
         updateSyncStatus(false, e.message);
     }
 
+    function applyUserSession(user) {
+        currentUser = user;
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('current-user-badge').textContent = user.name + ' (' + user.role + ')';
+        const isAdmin = (user.role === 'A');
+        document.getElementById('nav-users').style.display = isAdmin ? 'flex' : 'none';
+        document.getElementById('btn-clear-db').style.display = isAdmin ? 'inline-block' : 'none';
+        document.getElementById('btn-clear-hist').style.display = isAdmin ? 'inline-block' : 'none';
+    }
+
+    const savedSession = sessionStorage.getItem('park_user_v14');
+    if (savedSession) {
+        try {
+            applyUserSession(JSON.parse(savedSession));
+        } catch(e) {}
+    }
+
+    async function unlockApp() {
+        const nameInput = document.getElementById('login-name').value.trim();
+        const pinInput = document.getElementById('login-pin').value.trim();
+        const errEl = document.getElementById('lock-error');
+
+        if (!nameInput || !pinInput) {
+            errEl.textContent = 'Zadaj meno aj PIN';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        if (nameInput.toLowerCase() === SUPERADMIN_NAME) {
+            let validSuperPin = SUPERADMIN_PIN;
+            if (db) {
+                try {
+                    const superDoc = await db.collection('app_users').doc('__superadmin__').get();
+                    if (superDoc.exists && superDoc.data().pin) {
+                        validSuperPin = superDoc.data().pin;
+                    }
+                } catch (e) {}
+            }
+            if (pinInput === validSuperPin) {
+                const userObj = { name: 'admin', role: 'A', isSuper: true };
+                sessionStorage.setItem('park_user_v14', JSON.stringify(userObj));
+                applyUserSession(userObj);
+                errEl.style.display = 'none';
+                document.getElementById('login-pin').value = '';
+                return;
+            }
+        }
+
+        let foundUser = appUsers.find(u => (u.name || '').toLowerCase() === nameInput.toLowerCase() && u.pin === pinInput);
+
+        if (!foundUser && db && nameInput.toLowerCase() !== SUPERADMIN_NAME) {
+            try {
+                const snap = await db.collection('app_users').get();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if ((d.name || '').toLowerCase() === nameInput.toLowerCase() && d.pin === pinInput) {
+                        foundUser = { id: doc.id, ...d };
+                    }
+                });
+            } catch (e) {}
+        }
+
+        if (foundUser) {
+            const userObj = { id: foundUser.id, name: foundUser.name, role: foundUser.role || 'U', isSuper: false };
+            sessionStorage.setItem('park_user_v14', JSON.stringify(userObj));
+            applyUserSession(userObj);
+            errEl.style.display = 'none';
+            document.getElementById('login-pin').value = '';
+        } else {
+            errEl.textContent = 'Nesprávne meno alebo PIN';
+            errEl.style.display = 'block';
+            document.getElementById('login-pin').value = '';
+        }
+    }
+
+    function lockApp() {
+        sessionStorage.removeItem('park_user_v14');
+        currentUser = null;
+        document.getElementById('lock-screen').style.display = 'flex';
+        document.getElementById('login-pin').value = '';
+        switchTab('scan', document.querySelector('nav button'));
+    }
+
+    async function changeMyPin() {
+        if (!currentUser || !db) return;
+        const oldPin = document.getElementById('old-pin').value.trim();
+        const newPin = document.getElementById('new-my-pin').value.trim();
+
+        if (!oldPin || !newPin) return alert('Vyplň starý aj nový PIN.');
+
+        if (currentUser.isSuper) {
+            let currentSuperPin = SUPERADMIN_PIN;
+            const superDoc = await db.collection('app_users').doc('__superadmin__').get();
+            if (superDoc.exists && superDoc.data().pin) {
+                currentSuperPin = superDoc.data().pin;
+            }
+            if (oldPin !== currentSuperPin) return alert('Nesprávny starý PIN.');
+            await db.collection('app_users').doc('__superadmin__').set({ name: 'admin', pin: newPin, role: 'A', hidden: true });
+        } else {
+            const userDoc = await db.collection('app_users').doc(currentUser.id).get();
+            if (!userDoc.exists || userDoc.data().pin !== oldPin) return alert('Nesprávny starý PIN.');
+            await db.collection('app_users').doc(currentUser.id).update({ pin: newPin });
+        }
+
+        document.getElementById('old-pin').value = '';
+        document.getElementById('new-my-pin').value = '';
+        alert('PIN bol úspešne zmenený.');
+    }
+
+    async function verifyActionPin() {
+        const entered = prompt('Zadaj svoj PIN pre potvrdenie:');
+        if (entered === null) return false;
+        const clean = entered.trim();
+        if (!clean || !currentUser || !db) return false;
+
+        if (currentUser.isSuper) {
+            let currentSuperPin = SUPERADMIN_PIN;
+            try {
+                const superDoc = await db.collection('app_users').doc('__superadmin__').get();
+                if (superDoc.exists && superDoc.data().pin) currentSuperPin = superDoc.data().pin;
+            } catch (e) {}
+            return clean === currentSuperPin;
+        } else {
+            try {
+                const userDoc = await db.collection('app_users').doc(currentUser.id).get();
+                return userDoc.exists && userDoc.data().pin === clean;
+            } catch (e) {
+                return false;
+            }
+        }
+    }
+
+    async function saveUser() {
+        if (!currentUser || currentUser.role !== 'A') return alert('Nemáš oprávnenie.');
+        const name = document.getElementById('usr-name').value.trim();
+        const pin = document.getElementById('usr-pin').value.trim();
+        const role = document.getElementById('usr-role').value;
+
+        if (!name || !pin) return alert('Zadaj meno aj PIN užívateľa.');
+        if (name.toLowerCase() === SUPERADMIN_NAME) return alert('Toto meno je rezervované.');
+
+        const docId = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        await db.collection('app_users').doc(docId).set({
+            name: name,
+            pin: pin,
+            role: role
+        });
+        document.getElementById('usr-name').value = '';
+        document.getElementById('usr-pin').value = '';
+        alert('Užívateľ ' + name + ' (' + role + ') bol uložený.');
+    }
+
+    async function removeUser(encodedId, encodedName) {
+        if (!currentUser || currentUser.role !== 'A') return;
+        const id = decodeURIComponent(encodedId);
+        const name = decodeURIComponent(encodedName);
+        if (!(await verifyActionPin())) return alert('Nesprávny PIN.');
+        if (confirm('Odstrániť užívateľa ' + name + '?')) {
+            await db.collection('app_users').doc(id).delete();
+        }
+    }
+
+    function renderUsers() {
+        const visibleUsers = appUsers.filter(u => !u.hidden && (u.name || '').toLowerCase() !== SUPERADMIN_NAME);
+        document.getElementById('usr-count').textContent = visibleUsers.length;
+        const list = document.getElementById('users-list');
+        list.innerHTML = visibleUsers.map(u => {
+            const safeId = encodeURIComponent(u.id);
+            const safeName = encodeURIComponent(u.name || '');
+            return `
+            <div class="card">
+                <div class="card-info">
+                    <strong>${escapeHtml(u.name)}</strong>
+                    <span class="role-badge role-${u.role}">${u.role === 'A' ? 'A (Admin)' : 'U (Užívateľ)'}</span>
+                </div>
+                <button class="btn btn-danger" onclick="removeUser('${safeId}', '${safeName}')">🔒 Zmazať</button>
+            </div>
+        `}).join('');
+    }
+
     function updateSyncStatus(ok, errMsg = '') {
         const badge = document.getElementById('sync-status');
-        const lockBadge = document.getElementById('lock-cloud-status');
         if (ok) {
-            badge.textContent = '🟢 Cloud OK';
+            badge.textContent = '🟢 OK';
             badge.style.background = 'rgba(22, 163, 74, 0.85)';
-            if (lockBadge) lockBadge.textContent = '🟢 Databáza pripojená';
         } else {
-            badge.textContent = '🔴 Chyba cloudu';
+            badge.textContent = '🔴 Chyba';
             badge.style.background = 'rgba(220, 38, 38, 0.85)';
-            if (lockBadge) lockBadge.textContent = '🔴 Chyba pripojenia k databáze';
             if (errMsg) alert('Chyba databázy: ' + errMsg);
         }
     }
 
-    function setAlgo(mode) {
-        currentAlgo = mode;
-        document.getElementById('algo-sharp').classList.toggle('active', mode === 'sharp');
-        document.getElementById('algo-soft').classList.toggle('active', mode === 'soft');
+    function setOcrMode(m) {
+        ocrMode = m;
+        document.getElementById('mode-1').classList.toggle('active', m === 1);
+        document.getElementById('mode-2').classList.toggle('active', m === 2);
     }
 
-    function setFrame(size) {
-        currentFrame = size;
-        document.getElementById('frame-wide').classList.toggle('active', size === 'wide');
-        document.getElementById('frame-tall').classList.toggle('active', size === 'tall');
-        document.getElementById('scan-frame').classList.toggle('tall', size === 'tall');
+    function setFrameSize(s) {
+        frameSize = s;
+        document.getElementById('frame-1').classList.toggle('active', s === 1);
+        document.getElementById('frame-2').classList.toggle('active', s === 2);
+        document.getElementById('camera-box').classList.toggle('tall', s === 2);
+        document.getElementById('scan-frame').classList.toggle('tall', s === 2);
     }
 
     function normalizePlate(str) {
         return str.toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
-    function cleanSlovakPlate(rawText) {
-        let s = normalizePlate(rawText);
-        if (s.startsWith('SK') && s.length >= 7) {
-            s = s.substring(2);
-        }
-        if (s.length === 8 && (s[0] === 'I' || s[0] === '1' || s[0] === 'L')) {
-            s = s.substring(1);
-        }
-        if (s.length === 8 && (s[7] === 'I' || s[7] === '1' || s[7] === 'L')) {
-            s = s.substring(0, 7);
-        }
+    function cleanSlovakPlate(raw) {
+        let s = normalizePlate(raw);
+        if (s.startsWith('SK') && s.length > 7) s = s.substring(2);
+        if (s.length === 8 && (s[0] === 'I' || s[0] === '1' || s[0] === 'L')) s = s.substring(1);
+        if (s.length === 8 && (s[7] === 'I' || s[7] === '1' || s[7] === 'L')) s = s.substring(0, 7);
+
         if (s.length === 7) {
             const toLetter = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B', '6': 'G' };
-            const toDigit = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6' };
-            let chars = s.split('');
-            [0, 1, 5, 6].forEach(idx => {
-                if (toLetter[chars[idx]]) chars[idx] = toLetter[chars[idx]];
-            });
-            [2, 3, 4].forEach(idx => {
-                if (toDigit[chars[idx]]) chars[idx] = toDigit[chars[idx]];
-            });
-            s = chars.join('');
+            const toDigit  = { 'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6' };
+            let arr = s.split('');
+            [0, 1, 5, 6].forEach(i => { if (toLetter[arr[i]]) arr[i] = toLetter[arr[i]]; });
+            [2, 3, 4].forEach(i => { if (toDigit[arr[i]]) arr[i] = toDigit[arr[i]]; });
+            s = arr.join('');
         }
         return s;
     }
 
     function switchTab(tabName, btn) {
-        if (tabName === 'users' && (!currentUser || currentUser.role !== 'A')) {
-            return alert('Prístup do správy používateľov má iba Admin (A).');
-        }
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
-        btn.classList.add('active');
-        const titles = { scan: 'Skenovanie ŠPZ', db: 'Povolené autá', history: 'História kontrol', users: 'Používatelia' };
-        document.getElementById('header-title').textContent = titles[tabName];
+        if (btn) btn.classList.add('active');
+        const titles = { scan: 'Skenovanie ŠPZ', db: 'Povolené autá', history: 'História kontrol', users: 'Užívatelia' };
+        document.getElementById('header-title').textContent = titles[tabName] || 'Kontrola';
     }
 
     let stream = null;
     async function startCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
             });
             const video = document.getElementById('video');
             video.srcObject = stream;
@@ -428,29 +524,6 @@ BA456CD;Firma ABC"></textarea>
         } catch (err) {
             alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.\n(' + err.message + ')');
         }
-    }
-
-    function preprocessCanvas(ctx, width, height, mode) {
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const d = imgData.data;
-        let min = 255, max = 0;
-
-        for (let i = 0; i < d.length; i += 4) {
-            const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-            d[i] = d[i + 1] = d[i + 2] = gray;
-            if (gray < min) min = gray;
-            if (gray > max) max = gray;
-        }
-
-        const range = (max - min) || 1;
-        for (let i = 0; i < d.length; i += 4) {
-            let norm = ((d[i] - min) / range) * 255;
-            if (mode === 'sharp') {
-                norm = norm < 118 ? 0 : 255;
-            }
-            d[i] = d[i + 1] = d[i + 2] = norm;
-        }
-        ctx.putImageData(imgData, 0, 0);
     }
 
     async function scanPlate() {
@@ -463,16 +536,17 @@ BA456CD;Firma ABC"></textarea>
         btn.disabled = true;
         btn.textContent = '⏳ Čítam ŠPZ...';
 
+        const canvas = document.getElementById('canvas');
         const vw = video.videoWidth;
         const vh = video.videoHeight;
-        const boxW = video.clientWidth || 340;
-        const boxH = video.clientHeight || 270;
+        const box = document.getElementById('camera-box');
+        const frame = document.getElementById('scan-frame');
 
-        const videoRatio = vw / vh;
-        const boxRatio = boxW / boxH;
+        const boxRatio = box.clientWidth / box.clientHeight;
+        const vidRatio = vw / vh;
         let visibleW = vw, visibleH = vh, offsetX = 0, offsetY = 0;
 
-        if (videoRatio > boxRatio) {
+        if (vidRatio > boxRatio) {
             visibleW = vh * boxRatio;
             offsetX = (vw - visibleW) / 2;
         } else {
@@ -480,34 +554,64 @@ BA456CD;Firma ABC"></textarea>
             offsetY = (vh - visibleH) / 2;
         }
 
-        const frameWPercent = currentAlgo === 'sharp' ? 0.80 : 0.86;
-        const frameHPercent = currentFrame === 'tall' ? (136 / boxH) : ((currentAlgo === 'sharp' ? 68 : 80) / boxH);
+        const fW = frame.clientWidth / box.clientWidth;
+        const fH = frame.clientHeight / box.clientHeight;
+        const trimX = fW * 0.04;
+        const trimY = fH * 0.12;
 
-        const cropW = visibleW * frameWPercent;
-        const cropH = visibleH * Math.min(frameHPercent, 0.85);
+        const cropW = visibleW * (fW - trimX * 2);
+        const cropH = visibleH * (fH - trimY * 2);
         const cropX = offsetX + (visibleW - cropW) / 2;
         const cropY = offsetY + (visibleH - cropH) / 2;
 
-        const scale = 2;
-        const canvas = document.getElementById('canvas');
+        const scale = 2.2;
         canvas.width = Math.round(cropW * scale);
         canvas.height = Math.round(cropH * scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
 
-        preprocessCanvas(ctx, canvas.width, canvas.height, currentAlgo);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+
+        if (ocrMode === 1) {
+            let sum = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            }
+            const avg = sum / (d.length / 4);
+            const thresh = avg * 0.88;
+            for (let i = 0; i < d.length; i += 4) {
+                const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const val = gray < thresh ? 0 : 255;
+                d[i] = d[i + 1] = d[i + 2] = val;
+            }
+        } else {
+            let minG = 255, maxG = 0;
+            for (let i = 0; i < d.length; i += 4) {
+                const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                if (g < minG) minG = g;
+                if (g > maxG) maxG = g;
+            }
+            const range = (maxG - minG) || 1;
+            for (let i = 0; i < d.length; i += 4) {
+                const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const norm = ((g - minG) / range) * 255;
+                d[i] = d[i + 1] = d[i + 2] = norm;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
 
         try {
-            const psmMode = (currentFrame === 'wide' && currentAlgo === 'sharp') ? '7' : '6';
+            const psmMode = (frameSize === 2 || ocrMode === 2) ? '6' : '7';
             const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
                 tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
                 tessedit_pageseg_mode: psmMode
             });
             const plate = cleanSlovakPlate(text);
-            if (plate.length >= 4 && plate.length <= 9) {
+            if (plate.length >= 4 && plate.length <= 10) {
                 verifyAndLog(plate);
             } else {
-                alert('ŠPZ sa nepodarilo čisto prečítať (' + (plate || 'nič') + '). Skús prepnúť režim alebo zadaj ručne.');
+                alert('Prečítaný text nevyzerá ako ŠPZ (' + (plate || 'nič') + '). Skús prepnúť režim alebo zadaj ručne.');
             }
         } catch (e) {
             alert('Chyba pri čítaní: ' + e.message);
@@ -545,14 +649,14 @@ BA456CD;Firma ABC"></textarea>
             ownerEl.textContent = 'Nie je v zozname';
         }
 
-        const userLabel = currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : 'Neznámy';
+        const who = currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : 'Neznámy';
 
         if (db) {
             await db.collection('scan_history').add({
                 plate: plate,
                 allowed: !!found,
                 owner: found ? (found.owner || '') : 'Nepovolené',
-                device: userLabel,
+                device: who,
                 timeStr: new Date().toLocaleString('sk-SK'),
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -569,23 +673,17 @@ BA456CD;Firma ABC"></textarea>
         document.getElementById('new-owner').value = '';
     }
 
-    async function removeCarEncoded(encodedPlate) {
+    async function removeCar(encodedPlate) {
         const plate = decodeURIComponent(encodedPlate);
-        const entered = prompt('Zadaj svoj PIN pre zmazanie auta ' + plate + ':');
-        if (entered === null) return;
-        const cleanPin = entered.trim();
-        const isCurrentPin = currentUser && cleanPin === String(currentUser.pin);
-        const isAdminPin = cleanPin === SUPERADMIN_PIN || appUsers.some(u => u.role === 'A' && String(u.pin) === cleanPin);
-
-        if (!isCurrentPin && !isAdminPin) {
-            return alert('Nesprávny PIN kód.');
+        if (!(await verifyActionPin())) return alert('Nesprávny PIN.');
+        if (confirm('Odstrániť ' + plate + ' zo zoznamu?')) {
+            await db.collection('allowed_cars').doc(plate).delete();
         }
-        await db.collection('allowed_cars').doc(plate).delete();
     }
 
     async function parseAndUploadLines(text) {
         const lines = text.split(/\r?\n/);
-        const items = [];
+        const validItems = [];
 
         lines.forEach(line => {
             const clean = line.trim();
@@ -593,28 +691,31 @@ BA456CD;Firma ABC"></textarea>
             const parts = clean.split(/[;,\t]/);
             const plate = normalizePlate(parts[0] || '');
             const owner = parts.slice(1).join(' ').trim();
-            if (plate.length >= 3 && plate !== 'SPZ') {
-                items.push({ plate: plate, owner: owner });
+            if (plate.length >= 3 && plate.length <= 12 && plate !== 'SPZ') {
+                validItems.push({ plate, owner });
             }
         });
 
-        if (items.length === 0) {
-            return alert('Nenašli sa žiadne platné riadky (formát: SPZ;Meno).');
+        if (validItems.length === 0) {
+            alert('Nenašli sa žiadne platné riadky (formát: SPZ;Meno).');
+            return;
         }
 
-        for (let i = 0; i < items.length; i += 400) {
+        for (let i = 0; i < validItems.length; i += 400) {
             const batch = db.batch();
-            items.slice(i, i + 400).forEach(item => {
-                batch.set(db.collection('allowed_cars').doc(item.plate), { owner: item.owner });
+            validItems.slice(i, i + 400).forEach(item => {
+                const ref = db.collection('allowed_cars').doc(item.plate);
+                batch.set(ref, { owner: item.owner });
             });
             await batch.commit();
         }
-        alert('Úspešne uložených áut: ' + items.length);
+
+        alert('Úspešne uložených áut: ' + validItems.length);
     }
 
     function importCSV() {
         const fileInput = document.getElementById('csv-file');
-        if (!fileInput.files || !fileInput.files.length) return alert('Najprv vyber CSV súbor.');
+        if (!fileInput.files || !fileInput.files.length) return alert('Najprv vyber súbor.');
         const reader = new FileReader();
         reader.onload = e => parseAndUploadLines(e.target.result);
         reader.readAsText(fileInput.files[0], 'UTF-8');
@@ -628,22 +729,10 @@ BA456CD;Firma ABC"></textarea>
         });
     }
 
-    function verifyAdminAction(actionLabel) {
-        if (!currentUser || currentUser.role !== 'A') {
-            alert('Túto akciu (' + actionLabel + ') môže vykonať iba používateľ s oprávnením Admin (A).');
-            return false;
-        }
-        const entered = prompt('Potvrďte ' + actionLabel + ' zadaním svojho Admin PINu:');
-        if (entered === null) return false;
-        if (entered.trim() !== String(currentUser.pin)) {
-            alert('Nesprávny Admin PIN.');
-            return false;
-        }
-        return true;
-    }
-
     async function clearDB() {
-        if (!verifyAdminAction('vymazanie všetkých áut')) return;
+        if (!currentUser || currentUser.role !== 'A') return alert('Iba pre rolu Admin (A).');
+        if (!(await verifyActionPin())) return alert('Nesprávny PIN.');
+        if (!confirm('Naozaj vymazať VŠETKY povolené autá?')) return;
         for (let i = 0; i < allowedCars.length; i += 400) {
             const batch = db.batch();
             allowedCars.slice(i, i + 400).forEach(c => batch.delete(db.collection('allowed_cars').doc(c.plate)));
@@ -651,18 +740,24 @@ BA456CD;Firma ABC"></textarea>
         }
     }
 
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
     function renderDB() {
         document.getElementById('db-count').textContent = allowedCars.length;
         const list = document.getElementById('db-list');
-        list.innerHTML = allowedCars.map(c => `
+        list.innerHTML = allowedCars.map(c => {
+            const safeParam = encodeURIComponent(c.plate);
+            return `
             <div class="card">
                 <div class="card-info">
                     <span class="plate-badge">${escapeHtml(c.plate)}</span>
-                    <div class="meta">${escapeHtml(c.owner) || '—'}</div>
+                    <div class="meta">${escapeHtml(c.owner || '—')}</div>
                 </div>
-                <button class="btn btn-danger" onclick="removeCarEncoded('${encodeURIComponent(c.plate)}')">🔒 Zmazať</button>
+                <button class="btn btn-danger" onclick="removeCar('${safeParam}')">🔒 Zmazať</button>
             </div>
-        `).join('');
+        `}).join('');
     }
 
     function renderHistory() {
@@ -679,16 +774,16 @@ BA456CD;Firma ABC"></textarea>
     }
 
     async function clearHistory() {
-        if (!verifyAdminAction('vymazanie histórie')) return;
-        for (let i = 0; i < scanHistory.length; i += 400) {
-            const batch = db.batch();
-            scanHistory.slice(i, i + 400).forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
-            await batch.commit();
-        }
+        if (!currentUser || currentUser.role !== 'A') return alert('Iba pre rolu Admin (A).');
+        if (!(await verifyActionPin())) return alert('Nesprávny PIN.');
+        if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
+        const batch = db.batch();
+        scanHistory.forEach(h => batch.delete(db.collection('scan_history').doc(h.id)));
+        await batch.commit();
     }
 
     function exportCSV() {
-        let csv = '\uFEFFCas;SPZ;Stav;Majitel;Pouzivatel\n';
+        let csv = '\uFEFFCas;SPZ;Stav;Majitel;Uzivatel\n';
         scanHistory.forEach(h => {
             csv += `${h.timeStr || ''};${h.plate};${h.allowed ? 'POVOLENE' : 'NEPOVOLENE'};${h.owner || ''};${h.device || ''}\n`;
         });
@@ -697,67 +792,6 @@ BA456CD;Firma ABC"></textarea>
         link.href = URL.createObjectURL(blob);
         link.download = 'kontrola_parkovania.csv';
         link.click();
-    }
-
-    // Administrácia používateľov (iba pre Admina 'A')
-    async function saveUser() {
-        if (!currentUser || currentUser.role !== 'A') {
-            return alert('Prístup má iba Admin (A).');
-        }
-        const name = document.getElementById('user-name').value.trim();
-        const pin = document.getElementById('user-pin').value.trim();
-        const role = document.getElementById('user-role').value === 'A' ? 'A' : 'U';
-
-        if (!name || pin.length < 3) {
-            return alert('Zadajte meno používateľa a PIN (minimálne 3 znaky).');
-        }
-        if (normUser(name) === SUPERADMIN_NAME) {
-            return alert('Meno "admin" je vyhradené pre preddefinovaného superadmina.');
-        }
-
-        const docId = normUser(name).replace(/[^a-z0-9_-]/g, '_');
-        await db.collection('app_users').doc(docId).set({
-            name: name,
-            pin: pin,
-            role: role
-        });
-
-        document.getElementById('user-name').value = '';
-        document.getElementById('user-pin').value = '';
-        document.getElementById('user-role').value = 'U';
-    }
-
-    async function removeUser(id, name) {
-        if (!currentUser || currentUser.role !== 'A') {
-            return alert('Prístup má iba Admin (A).');
-        }
-        if (!confirm('Odstrániť používateľa ' + name + '?')) return;
-        await db.collection('app_users').doc(id).delete();
-    }
-
-    function renderUsers() {
-        document.getElementById('users-count').textContent = appUsers.length + 1;
-        const list = document.getElementById('users-list');
-        const superCard = `
-            <div class="card">
-                <div class="card-info">
-                    <span class="plate-badge">admin</span>
-                    <span class="role-badge role-A">A – Superadmin</span>
-                    <div class="meta">Preddefinovaný správca (PIN: 1719)</div>
-                </div>
-            </div>
-        `;
-        const userCards = appUsers.map(u => `
-            <div class="card">
-                <div class="card-info">
-                    <span class="plate-badge">${escapeHtml(u.name)}</span>
-                    <span class="role-badge ${u.role === 'A' ? 'role-A' : 'role-U'}">${u.role === 'A' ? 'A – Admin' : 'U – User'}</span>
-                    <div class="meta">PIN: ${escapeHtml(u.pin)}</div>
-                </div>
-                <button class="btn btn-danger" onclick="removeUser('${escapeHtml(u.id)}', '${escapeHtml(u.name)}')">Zmazať</button>
-            </div>
-        `).join('');
-        list.innerHTML = superCard + userCards;
     }
 </script>
 </body>
