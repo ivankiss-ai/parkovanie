@@ -46,15 +46,16 @@
         video { width: 100%; height: 100%; object-fit: cover; }
         .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s, border-color 0.2s; }
         .scan-frame.tall { height: 136px; }
-        .scan-frame.scanning { border-color: #22c55e; }
+        .scan-frame.auto-active { border-color: #22c55e; }
         .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
-        .ai-counter-badge { position: absolute; top: 10px; left: 10px; z-index: 4; background: rgba(0,0,0,0.65); color: #e2e8f0; font-size: 0.72rem; padding: 4px 8px; border-radius: 8px; pointer-events: none; }
-        #cam-stop-btn { display: none; position: absolute; top: 10px; right: 10px; z-index: 6; background: rgba(220, 38, 38, 0.9); color: white; border: none; padding: 6px 11px; border-radius: 8px; font-weight: bold; font-size: 0.78rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        .quota-badge { position: absolute; top: 8px; left: 8px; z-index: 4; background: rgba(0,0,0,0.65); color: #e2e8f0; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+        #cam-stop-btn { display: none; position: absolute; top: 8px; right: 8px; z-index: 6; background: rgba(220, 38, 38, 0.92); color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
         #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
 
         .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
         .mode-switch button { flex: 1; padding: 8px 4px; border: none; border-radius: 7px; font-size: 0.8rem; font-weight: 600; background: transparent; color: #475569; cursor: pointer; }
         .mode-switch button.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .mode-switch button.auto-on { background: var(--success); color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); color: white; }
@@ -73,8 +74,8 @@
         #result-banner.fail { background: var(--danger); }
         #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; word-break: break-all; }
 
-        .preview-box { display: none; text-align: center; margin-bottom: 10px; background: white; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
-        .preview-box img { max-height: 60px; border-radius: 4px; border: 1px solid #94a3b8; }
+        .crop-preview-box { display: none; text-align: center; margin-bottom: 10px; background: #e2e8f0; padding: 6px; border-radius: 8px; }
+        .crop-preview-box img { max-height: 54px; max-width: 100%; border-radius: 4px; border: 1px solid #94a3b8; display: block; margin: 4px auto 0; }
 
         .card { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .card-info { min-width: 0; flex: 1; overflow-wrap: break-word; }
@@ -98,14 +99,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password" onkeydown="if(event.key==='Enter') checkLogin()">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.30 (AI)</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.31 (AI + Stop)</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.30</span>
+        <span class="version-tag">v1.31</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -121,7 +122,7 @@
     </div>
 
     <div class="camera-box" id="camera-box">
-        <div class="ai-counter-badge" id="ai-counter">Dnes AI: 0 / 1000</div>
+        <span class="quota-badge" id="quota-badge">Dnes AI: 0 / 1000</span>
         <button id="cam-stop-btn" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
@@ -135,14 +136,14 @@
     </div>
 
     <div class="mode-switch">
-        <button id="mode-manual" class="active" onclick="setScanMode(false)">👆 Manuálne (tlačidlom)</button>
-        <button id="mode-auto" onclick="setScanMode(true)">🚶 Auto-sken pri chôdzi</button>
+        <button id="scan-mode-manual" class="active" onclick="setAutoScan(false)">👆 Manuálne (tlačidlom)</button>
+        <button id="scan-mode-auto" onclick="setAutoScan(true)">🚶 Auto-sken pri chôdzi</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate(false)">📸 Odfotiť a overiť ŠPZ</button>
 
-    <div id="crop-preview-box" class="preview-box">
-        <div style="font-size: 0.72rem; color: #64748b; margin-bottom: 4px;">Posledný snímaný výrez:</div>
+    <div class="crop-preview-box" id="crop-preview-box">
+        <div style="font-size: 0.72rem; color: #475569;">Posledný odoslaný výrez pre AI:</div>
         <img id="crop-preview-img" alt="Výrez ŠPZ">
     </div>
 
@@ -203,12 +204,12 @@
 </div>
 
 <div id="tab-users" class="tab">
-    <div class="section-box admin-only" style="border: 2px solid #bfdbfe; background: #eff6ff;">
+    <div class="section-box">
         <h3 style="margin-top:0;">🤖 Nastavenie AI skenera (Gemini API)</h3>
-        <p style="font-size: 0.85rem; color: #475569; margin-top: 0;">Kľúč sa uloží do cloudu aj pamäte mobilu.</p>
-        <input type="password" id="gemini-key-input" placeholder="Vložte Gemini API kľúč (začína na AIzaSy...)" style="margin-bottom: 8px;">
-        <button class="btn btn-success" style="margin-bottom: 6px;" onclick="saveGeminiKey()">💾 Uložiť API kľúč do cloudu</button>
-        <div id="gemini-key-status" style="font-size: 0.82rem; font-weight: 600;"></div>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Kľúč sa uloží do cloudu aj do pamäte mobilu (nie je v kóde na GitHube).</p>
+        <input type="password" id="gemini-key-input" placeholder="Vložte Gemini API kľúč (začína na AIzaSy...)">
+        <button class="btn btn-success" onclick="saveGeminiKey()">💾 Uložiť API kľúč do cloudu</button>
+        <div id="gemini-key-status" style="font-size: 0.82rem; font-weight: 600; color: #64748b;">Stav: Načítavam...</div>
     </div>
 
     <div class="section-box">
@@ -248,6 +249,7 @@
     const SUPERADMIN_USER = "admin";
     const SUPERADMIN_PASS = "1719";
     const CONFIG_DOC_ID = "_system_gemini_config";
+    const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
 
     let db = null;
     let geminiApiKey = localStorage.getItem('park_gemini_key_cache') || "";
@@ -256,42 +258,48 @@
     let appUsers = JSON.parse(localStorage.getItem('park_users_cache') || '[]');
     let currentUser = null;
     let isTallFrame = false;
+
     let isAutoScan = false;
     let autoScanTimer = null;
-    let isScanningNow = false;
+    let isScanningBusy = false;
     let currentAbortController = null;
-    let prevFrameSig = null;
-    let lastAutoLoggedPlate = "";
-    let lastAutoLoggedTime = 0;
+    let lastFrameSignature = null;
+    let lastLoggedPlate = "";
+    let lastLoggedTime = 0;
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
-    function getTodayAiCount() {
-        const today = new Date().toISOString().slice(0, 10);
-        const savedDate = localStorage.getItem('park_ai_date');
-        if (savedDate !== today) {
-            localStorage.setItem('park_ai_date', today);
-            localStorage.setItem('park_ai_count', '0');
+    function getTodayDateKey() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    function getDailyQuotaCount() {
+        const storedDate = localStorage.getItem('park_ai_quota_date');
+        const today = getTodayDateKey();
+        if (storedDate !== today) {
+            localStorage.setItem('park_ai_quota_date', today);
+            localStorage.setItem('park_ai_quota_count', '0');
             return 0;
         }
-        return parseInt(localStorage.getItem('park_ai_count') || '0', 10);
+        return parseInt(localStorage.getItem('park_ai_quota_count') || '0', 10);
     }
 
-    function incrementAiCount() {
-        const next = getTodayAiCount() + 1;
-        localStorage.setItem('park_ai_count', String(next));
-        updateAiCounterUI();
+    function incrementDailyQuota() {
+        const count = getDailyQuotaCount() + 1;
+        localStorage.setItem('park_ai_quota_count', String(count));
+        updateQuotaDisplay();
     }
 
-    function updateAiCounterUI() {
-        const el = document.getElementById('ai-counter');
-        if (el) el.textContent = 'Dnes AI: ' + getTodayAiCount() + ' / 1000';
+    function updateQuotaDisplay() {
+        const el = document.getElementById('quota-badge');
+        if (el) el.textContent = "Dnes AI: " + getDailyQuotaCount() + " / 1000";
     }
-    updateAiCounterUI();
 
-    function playBeep(isOk) {
+    updateQuotaDisplay();
+
+    function playBeep(isAllowed) {
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
@@ -300,22 +308,38 @@
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
-            if (isOk) {
+            if (isAllowed) {
+                osc.type = 'sine';
                 osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.setValueAtTime(0.18, ctx.currentTime);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.18);
             } else {
-                osc.frequency.setValueAtTime(300, ctx.currentTime);
-                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(280, ctx.currentTime);
+                gain.gain.setValueAtTime(0.22, ctx.currentTime);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.38);
+                osc.stop(ctx.currentTime + 0.42);
             }
         } catch (e) {}
     }
 
     function normalizeName(str) {
         return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function updateKeyStatusUI() {
+        const statusEl = document.getElementById('gemini-key-status');
+        const inputEl = document.getElementById('gemini-key-input');
+        if (!statusEl) return;
+        if (geminiApiKey && geminiApiKey.length > 10) {
+            statusEl.textContent = "🟢 API kľúč je uložený a aktívny";
+            statusEl.style.color = "var(--success)";
+            if (inputEl && !inputEl.value) inputEl.value = geminiApiKey;
+        } else {
+            statusEl.textContent = "🔴 API kľúč nie je nastavený";
+            statusEl.style.color = "var(--danger)";
+        }
     }
 
     function updateConnectionBadge() {
@@ -329,20 +353,6 @@
         }
     }
 
-    function updateGeminiKeyUI() {
-        const statusEl = document.getElementById('gemini-key-status');
-        const inputEl = document.getElementById('gemini-key-input');
-        if (!statusEl) return;
-        if (geminiApiKey && geminiApiKey.length > 10) {
-            statusEl.textContent = '🟢 API kľúč je uložený a aktívny (' + geminiApiKey.slice(0, 6) + '...)';
-            statusEl.style.color = 'var(--success)';
-            if (inputEl && !inputEl.value) inputEl.value = geminiApiKey;
-        } else {
-            statusEl.textContent = '🔴 API kľúč nie je nastavený';
-            statusEl.style.color = 'var(--danger)';
-        }
-    }
-
     window.addEventListener('online', updateConnectionBadge);
     window.addEventListener('offline', updateConnectionBadge);
 
@@ -353,12 +363,12 @@
 
         db.collection('app_users').onSnapshot(snapshot => {
             const allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const cfg = allDocs.find(d => d.id === CONFIG_DOC_ID);
-            if (cfg && cfg.apiKey) {
-                geminiApiKey = String(cfg.apiKey).trim();
+            const cfgDoc = allDocs.find(d => d.id === CONFIG_DOC_ID);
+            if (cfgDoc && cfgDoc.apiKey) {
+                geminiApiKey = String(cfgDoc.apiKey).trim();
                 localStorage.setItem('park_gemini_key_cache', geminiApiKey);
             }
-            updateGeminiKeyUI();
+            updateKeyStatusUI();
 
             appUsers = allDocs.filter(d => d.id !== CONFIG_DOC_ID);
             appUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -386,11 +396,32 @@
         updateConnectionBadge();
     }
 
+    updateKeyStatusUI();
     renderDB();
     renderHistory();
     renderUsers();
     updateConnectionBadge();
-    updateGeminiKeyUI();
+
+    async function saveGeminiKey() {
+        if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
+        const val = document.getElementById('gemini-key-input').value.trim();
+        if (val.length < 15) return alert('Zadaj platný Gemini API kľúč.');
+        try {
+            geminiApiKey = val;
+            localStorage.setItem('park_gemini_key_cache', val);
+            updateKeyStatusUI();
+            if (db) {
+                await db.collection('app_users').doc(CONFIG_DOC_ID).set({
+                    apiKey: val,
+                    isSystemConfig: true,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+            alert('API kľúč bol úspešne uložený.');
+        } catch (e) {
+            alert('Kľúč bol uložený v tomto mobile, chyba cloudu: ' + e.message);
+        }
+    }
 
     const savedSession = sessionStorage.getItem('park_user_v119');
     if (savedSession) {
@@ -398,26 +429,6 @@
             currentUser = JSON.parse(savedSession);
             applyUserSession();
         } catch (e) {}
-    }
-
-    async function saveGeminiKey() {
-        if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
-        const val = document.getElementById('gemini-key-input').value.trim();
-        if (!val.startsWith('AIza') || val.length < 20) {
-            return alert('Zadaj platný Gemini API kľúč (začína na AIza...).');
-        }
-        geminiApiKey = val;
-        localStorage.setItem('park_gemini_key_cache', val);
-        updateGeminiKeyUI();
-        try {
-            await db.collection('app_users').doc(CONFIG_DOC_ID).set({
-                apiKey: val,
-                updatedAt: new Date().toISOString()
-            });
-            alert('API kľúč bol uložený do cloudu aj pamäte zariadenia.');
-        } catch (e) {
-            alert('Kľúč je uložený v tomto zariadení (cloud hlási: ' + e.message + ').');
-        }
     }
 
     async function checkLogin() {
@@ -446,10 +457,11 @@
             if (!found && db && navigator.onLine) {
                 const snap = await db.collection('app_users').get();
                 const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const cfg = allDocs.find(d => d.id === CONFIG_DOC_ID);
-                if (cfg && cfg.apiKey) {
-                    geminiApiKey = String(cfg.apiKey).trim();
+                const cfgDoc = allDocs.find(d => d.id === CONFIG_DOC_ID);
+                if (cfgDoc && cfgDoc.apiKey) {
+                    geminiApiKey = String(cfgDoc.apiKey).trim();
                     localStorage.setItem('park_gemini_key_cache', geminiApiKey);
+                    updateKeyStatusUI();
                 }
                 appUsers = allDocs.filter(d => d.id !== CONFIG_DOC_ID);
                 localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
@@ -480,14 +492,14 @@
 
     function applyUserSession() {
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('current-user-label').textContent = currentUser.name + ' (' + currentUser.role + ')';
+        document.getElementById('current-user-label').textContent = currentUser.name + " (" + currentUser.role + ")";
         const isAdmin = currentUser.role === 'A';
         document.querySelectorAll('.admin-only').forEach(el => {
             el.style.display = isAdmin ? (el.tagName === 'BUTTON' ? 'flex' : 'block') : 'none';
         });
         const clearHistBtn = document.getElementById('btn-clear-history');
         if (clearHistBtn) clearHistBtn.style.display = isAdmin ? 'inline-block' : 'none';
-        updateGeminiKeyUI();
+        updateKeyStatusUI();
         renderDB();
         renderUsers();
     }
@@ -571,20 +583,19 @@
         return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     }
 
-    function smartMatchPlate(rawPlate) {
-        const clean = normalizePlate(rawPlate);
-        if (!clean) return '';
-        if (allowedCars.some(c => c.plate === clean)) return clean;
+    function smartMatchDatabasePlate(scanned) {
+        if (!scanned) return scanned;
+        if (allowedCars.some(c => c.plate === scanned)) return scanned;
 
-        for (let i = 0; i < clean.length - 1; i++) {
-            if (clean[i] === clean[i + 1]) {
-                const reduced = clean.slice(0, i) + clean.slice(i + 1);
-                if (allowedCars.some(c => c.plate === reduced)) {
-                    return reduced;
+        for (let i = 0; i < scanned.length - 1; i++) {
+            if (scanned[i] === scanned[i + 1]) {
+                const candidate = scanned.slice(0, i) + scanned.slice(i + 1);
+                if (allowedCars.some(c => c.plate === candidate)) {
+                    return candidate;
                 }
             }
         }
-        return clean;
+        return scanned;
     }
 
     function setFrameSize(tall) {
@@ -593,50 +604,46 @@
         document.getElementById('scan-frame').classList.toggle('tall', tall);
         document.getElementById('frame-1').classList.toggle('active', !tall);
         document.getElementById('frame-2').classList.toggle('active', tall);
-        document.getElementById('scan-hint').textContent = tall
-            ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
-            : 'Umiestni ŠPZ do modrého rámika';
-    }
-
-    function setScanMode(autoMode) {
-        isAutoScan = autoMode;
-        document.getElementById('mode-manual').classList.toggle('active', !autoMode);
-        document.getElementById('mode-auto').classList.toggle('active', autoMode);
-        const btn = document.getElementById('btn-scan');
-
-        if (autoMode) {
-            btn.style.display = 'none';
-            document.getElementById('scan-hint').textContent = '🚶 Auto-sken aktívny – kráčaj popri autách';
-            prevFrameSig = null;
-            if (!stream) {
-                startCamera().then(() => startAutoLoop());
-            } else {
-                startAutoLoop();
-            }
-        } else {
-            stopAutoLoop();
-            btn.style.display = 'block';
-            btn.disabled = false;
-            btn.textContent = '📸 Odfotiť a overiť ŠPZ';
-            document.getElementById('scan-hint').textContent = isTallFrame
+        if (!isAutoScan) {
+            document.getElementById('scan-hint').textContent = tall
                 ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
                 : 'Umiestni ŠPZ do modrého rámika';
         }
     }
 
-    function startAutoLoop() {
-        stopAutoLoop();
-        autoScanTimer = setInterval(() => {
-            if (isAutoScan && stream && !isScanningNow) {
-                scanPlate(true);
-            }
-        }, 4500);
-    }
+    function setAutoScan(enabled) {
+        isAutoScan = enabled;
+        const btnManual = document.getElementById('scan-mode-manual');
+        const btnAuto = document.getElementById('scan-mode-auto');
+        const frameEl = document.getElementById('scan-frame');
+        const btnScan = document.getElementById('btn-scan');
 
-    function stopAutoLoop() {
+        btnManual.classList.toggle('active', !enabled);
+        btnAuto.classList.toggle('auto-on', enabled);
+        frameEl.classList.toggle('auto-active', enabled);
+
         if (autoScanTimer) {
             clearInterval(autoScanTimer);
             autoScanTimer = null;
+        }
+
+        if (enabled) {
+            lastFrameSignature = null;
+            document.getElementById('scan-hint').textContent = '🚶 Auto-sken aktívny – kráčaj popri autách';
+            btnScan.textContent = '🚶 Auto-sken beží (každých 4,5 s)...';
+            if (!stream) {
+                startCamera();
+            }
+            autoScanTimer = setInterval(() => {
+                if (isAutoScan && stream && !isScanningBusy) {
+                    scanPlate(true);
+                }
+            }, 4500);
+        } else {
+            document.getElementById('scan-hint').textContent = isTallFrame
+                ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
+                : 'Umiestni ŠPZ do modrého rámika';
+            btnScan.textContent = '📸 Odfotiť a overiť ŠPZ';
         }
     }
 
@@ -668,18 +675,21 @@
             document.getElementById('cam-start-btn').style.display = 'none';
             document.getElementById('cam-stop-btn').style.display = 'block';
         } catch (err) {
+            setAutoScan(false);
             alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.
 (' + err.message + ')');
         }
     }
 
     function stopCamera() {
-        stopAutoLoop();
+        if (isAutoScan) {
+            setAutoScan(false);
+        }
         if (currentAbortController) {
             currentAbortController.abort();
             currentAbortController = null;
         }
-        isScanningNow = false;
+        isScanningBusy = false;
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
@@ -688,53 +698,44 @@
         if (video) video.srcObject = null;
         document.getElementById('cam-stop-btn').style.display = 'none';
         document.getElementById('cam-start-btn').style.display = 'block';
-        document.getElementById('scan-frame').classList.remove('scanning');
-
-        if (isAutoScan) {
-            isAutoScan = false;
-            document.getElementById('mode-manual').classList.add('active');
-            document.getElementById('mode-auto').classList.remove('active');
-        }
         const btn = document.getElementById('btn-scan');
-        btn.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = '📸 Odfotiť a overiť ŠPZ';
-        document.getElementById('scan-hint').textContent = 'Kamera je vypnutá';
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📸 Odfotiť a overiť ŠPZ';
+        }
     }
 
-    function computeFrameSignature(ctx, w, h) {
-        const small = document.createElement('canvas');
-        small.width = 16;
-        small.height = 8;
-        const sctx = small.getContext('2d');
-        sctx.drawImage(ctx.canvas, 0, 0, w, h, 0, 0, 16, 8);
-        const data = sctx.getImageData(0, 0, 16, 8).data;
-        const grays = [];
+    function computeFrameSignature(ctx, width, height) {
+        const smallCanvas = document.createElement('canvas');
+        smallCanvas.width = 16;
+        smallCanvas.height = 8;
+        const sCtx = smallCanvas.getContext('2d');
+        sCtx.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, 16, 8);
+        const data = sCtx.getImageData(0, 0, 16, 8).data;
+        const lum = [];
         for (let i = 0; i < data.length; i += 4) {
-            grays.push((data[i] + data[i + 1] + data[i + 2]) / 3);
+            lum.push(Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]));
         }
-        return grays;
+        return lum;
     }
 
-    function hasSceneChanged(sigA, sigB) {
-        if (!sigA || !sigB || sigA.length !== sigB.length) return true;
+    function hasSceneChanged(prevSig, currSig) {
+        if (!prevSig) return true;
         let diffSum = 0;
-        for (let i = 0; i < sigA.length; i++) {
-            diffSum += Math.abs(sigA[i] - sigB[i]);
+        for (let i = 0; i < currSig.length; i++) {
+            diffSum += Math.abs(currSig[i] - prevSig[i]);
         }
-        const avgDiff = diffSum / sigA.length;
-        return avgDiff > 10;
+        const avgDiff = diffSum / currSig.length;
+        return avgDiff > 11;
     }
 
     async function callGeminiWithFallback(base64Image, signal) {
-        const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
-        let lastError = 'Neznáma chyba';
+        let lastErr = null;
+        const promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (D), rakúsku (A), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen alebo kombinácie písmen a číslic. Presne spočítaj každý jeden znak a nezdvojuj opakujúce sa znaky (napr. 222 nie je 2222). Vráť IBA samotné znaky značky bez medzier, pomlčiek, nálepiek STK/EK, štátneho znaku, kódu krajiny v modrom pruhu a bez textu z podložky pod značkou. Ak na obrázku nie je čitateľná žiadna značka, vráť iba slovo NONE.";
 
-        const promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ) z obrázka. Môže ísť o slovenskú, českú, nemeckú, rakúsku, ukrajinskú alebo zahraničnú značku, prípadne značku na želanie zloženú iba z písmen. Pozorne spočítaj každý jeden znak, aby si nezdvojil rovnaké číslice alebo písmená (napr. 222 nie je 2222). Vráť IBA samotné znaky značky bez medzier, pomlčiek, nálepiek STK/EK, kódu krajiny (SK/CZ/D/A/UA) a bez textu z rámika pod značkou. Ak na obrázku žiadna čitateľná ŠPZ nie je, vráť iba slovo NONE.";
-
-        for (const modelName of models) {
+        for (const modelName of GEMINI_MODELS) {
             try {
-                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + geminiApiKey, {
+                const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + geminiApiKey, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     signal: signal,
@@ -744,7 +745,7 @@
                                 { text: promptText },
                                 {
                                     inline_data: {
-                                        mime_type: 'image/jpeg',
+                                        mime_type: "image/jpeg",
                                         data: base64Image
                                     }
                                 }
@@ -758,35 +759,37 @@
 
                 const data = await response.json();
                 if (data.error) {
-                    lastError = data.error.message || 'Chyba API';
+                    lastErr = new Error(data.error.message);
                     continue;
                 }
-
-                const text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
-                    ? data.candidates[0].content.parts[0].text
-                    : '';
-                return text;
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                if (text) return text;
             } catch (err) {
-                if (err.name === 'AbortError') throw err;
-                lastError = err.message;
+                if (err.name === 'AbortError') {
+                    throw new Error('Časový limit vypršal alebo bolo čítanie zrušené.');
+                }
+                lastErr = err;
             }
         }
-        throw new Error(lastError);
+        throw lastErr || new Error('Všetky AI modely sú momentálne nedostupné.');
     }
 
-    async function scanPlate(fromAuto = false) {
-        if (isScanningNow) return;
+    async function scanPlate(isAutoTrigger = false) {
+        if (isScanningBusy) return;
+
         const video = document.getElementById('video');
         if (!stream) {
-            if (!fromAuto) await startCamera();
+            if (!isAutoTrigger) await startCamera();
             return;
         }
         if (!geminiApiKey) {
-            if (!fromAuto) alert('Chýba Gemini API kľúč! Nastav ho v karte Užívatelia.');
+            if (isAutoTrigger) setAutoScan(false);
+            alert('Chýba Gemini API kľúč! Zadaj ho v záložke Užívatelia.');
             return;
         }
         if (!navigator.onLine) {
-            if (!fromAuto) alert('Na čítanie značiek je potrebné internetové pripojenie. Zadaj ŠPZ ručne.');
+            if (isAutoTrigger) setAutoScan(false);
+            alert('Na AI skener je potrebné internetové pripojenie. Zadaj ŠPZ ručne.');
             return;
         }
 
@@ -803,75 +806,71 @@
         const offX = (vw - visW) / 2;
         const offY = (vh - visH) / 2;
 
-        const frameW = visW * 0.84;
-        const frameH = visH * (isTallFrame ? 0.42 : 0.28);
+        const frameW = visW * 0.88;
+        const frameH = visH * (isTallFrame ? 0.44 : 0.30);
         const cropX = offX + (visW - frameW) / 2;
         const cropY = offY + (visH - frameH) / 2;
 
         const canvas = document.createElement('canvas');
-        canvas.width = Math.round(frameW);
-        canvas.height = Math.round(frameH);
+        canvas.width = frameW;
+        canvas.height = frameH;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, canvas.width, canvas.height);
 
-        const currentSig = computeFrameSignature(ctx, canvas.width, canvas.height);
-        if (fromAuto && !hasSceneChanged(prevFrameSig, currentSig)) {
+        const currSig = computeFrameSignature(ctx, canvas.width, canvas.height);
+        if (isAutoTrigger && !hasSceneChanged(lastFrameSignature, currSig)) {
             return;
         }
-        prevFrameSig = currentSig;
+        lastFrameSignature = currSig;
 
-        isScanningNow = true;
+        isScanningBusy = true;
         currentAbortController = new AbortController();
         const timeoutId = setTimeout(() => {
             if (currentAbortController) currentAbortController.abort();
         }, 8000);
 
         const btn = document.getElementById('btn-scan');
-        const frameEl = document.getElementById('scan-frame');
-        frameEl.classList.add('scanning');
-        if (!fromAuto) {
+        if (!isAutoTrigger) {
             btn.disabled = true;
             btn.textContent = '⏳ AI číta ŠPZ...';
         } else {
-            document.getElementById('scan-hint').textContent = '⏳ AI overuje záber...';
+            document.getElementById('scan-hint').textContent = '⏳ Analyzujem záber...';
         }
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        document.getElementById('crop-preview-img').src = dataUrl;
-        document.getElementById('crop-preview-box').style.display = 'block';
-
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
         const base64Image = dataUrl.split(',')[1];
 
-        try {
-            incrementAiCount();
-            const rawResult = await callGeminiWithFallback(base64Image, currentAbortController.signal);
-            const plate = smartMatchPlate(rawResult);
+        const previewBox = document.getElementById('crop-preview-box');
+        const previewImg = document.getElementById('crop-preview-img');
+        if (previewBox && previewImg) {
+            previewImg.src = dataUrl;
+            previewBox.style.display = 'block';
+        }
 
-            if (plate && plate !== 'NONE' && plate.length >= 3 && plate.length <= 10) {
+        try {
+            incrementDailyQuota();
+            const rawResult = await callGeminiWithFallback(base64Image, currentAbortController.signal);
+            const rawPlate = normalizePlate(rawResult);
+            const plate = smartMatchDatabasePlate(rawPlate);
+
+            if (plate && plate !== 'NONE' && plate.length >= 3) {
                 const now = Date.now();
-                const skipHistoryLog = fromAuto && (plate === lastAutoLoggedPlate) && (now - lastAutoLoggedTime < 20000);
-                if (fromAuto) {
-                    lastAutoLoggedPlate = plate;
-                    lastAutoLoggedTime = now;
-                }
-                verifyAndLog(plate, skipHistoryLog);
-            } else if (!fromAuto) {
+                const isDuplicate = (plate === lastLoggedPlate && (now - lastLoggedTime) < 20000);
+                verifyAndLog(plate, isDuplicate);
+                lastLoggedPlate = plate;
+                lastLoggedTime = now;
+            } else if (!isAutoTrigger) {
                 alert('ŠPZ sa nepodarilo prečítať. Skús priblížiť kameru alebo zadaj značku ručne.');
             }
         } catch (e) {
-            if (!fromAuto) {
-                if (e.name === 'AbortError') {
-                    alert('Čítanie trvalo príliš dlho a bolo prerušené. Skús znova.');
-                } else {
-                    alert('Chyba pri čítaní: ' + e.message);
-                }
+            if (!isAutoTrigger && stream) {
+                alert('Chyba pri čítaní: ' + e.message);
             }
         } finally {
             clearTimeout(timeoutId);
             currentAbortController = null;
-            isScanningNow = false;
-            frameEl.classList.remove('scanning');
-            if (!fromAuto) {
+            isScanningBusy = false;
+            if (!isAutoTrigger && stream) {
                 btn.disabled = false;
                 btn.textContent = '📸 Odfotiť a overiť ŠPZ';
             } else if (isAutoScan && stream) {
@@ -882,7 +881,7 @@
 
     function manualVerify() {
         const input = document.getElementById('manual-plate');
-        const plate = smartMatchPlate(input.value);
+        const plate = normalizePlate(input.value);
         if (plate.length < 3) return alert('Zadaj platnú ŠPZ.');
         verifyAndLog(plate, false);
         input.value = '';
@@ -912,7 +911,7 @@
 
         if (skipHistoryLog) return;
 
-        const userLabel = currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : 'Neznámy';
+        const userLabel = currentUser ? currentUser.name + " (" + currentUser.role + ")" : 'Neznámy';
         const record = {
             plate: plate,
             allowed: !!found,
