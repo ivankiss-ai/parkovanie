@@ -3,92 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kontrola Parkovania v1.42</title>
+    <title>Kontrola Parkovania v1.44</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; padding: 0; background: #f1f5f9; color: #0f172a; padding-bottom: 75px; }
-        header { background: #1e293b; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        header h1 { margin: 0; font-size: 1.05rem; }
-        .badge { background: #334155; padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; }
-        .container { padding: 12px; max-width: 650px; margin: 0 auto; }
+        header { background: #1e293b; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        header h1 { margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 6px; }
+        .badge-ver { background: #334155; color: #94a3b8; font-size: 0.72rem; padding: 2px 6px; border-radius: 6px; }
+        .cloud-status { font-size: 0.78rem; padding: 4px 8px; border-radius: 12px; background: #334155; }
+        .container { max-width: 600px; margin: 0 auto; padding: 12px; }
         .card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
+        .hidden { display: none !important; }
+        input[type="text"], input[type="password"], textarea { width: 100%; padding: 11px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-success { background: #16a34a; color: white; }
         .btn-danger { background: #dc2626; color: white; }
-        .btn-outline { background: white; border: 1px solid #cbd5e1; color: #0f172a; }
-        .btn-sm { padding: 7px 10px; font-size: 0.85rem; width: auto; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; margin-bottom: 10px; }
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; border-top: 1px solid #e2e8f0; z-index: 100; }
-        .nav-item { flex: 1; padding: 10px 4px; text-align: center; font-size: 0.75rem; color: #64748b; cursor: pointer; border: none; background: none; }
-        .nav-item.active { color: #2563eb; font-weight: bold; border-top: 3px solid #2563eb; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        /* Kamera - kompaktná výška 220px */
-        #camera-box { position: relative; width: 100%; height: 220px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
-        #video { width: 100%; height: 100%; object-fit: cover; display: none; }
-        #guide-frame { position: absolute; border: 3px solid #38bdf8; border-radius: 8px; width: 76%; height: 64px; pointer-events: none; display: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); }
-        #guide-frame.two-rows { width: 52%; height: 112px; }
-        #ai-counter { position: absolute; top: 8px; left: 8px; background: rgba(15,23,42,0.78); color: #f8fafc; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; display: none; z-index: 10; font-family: monospace; }
-        #btn-stop-cam { position: absolute; top: 8px; right: 8px; background: rgba(220,38,38,0.92); color: white; border: none; border-radius: 6px; padding: 5px 9px; font-size: 0.78rem; font-weight: bold; cursor: pointer; display: none; z-index: 10; }
+        .btn-secondary { background: #e2e8f0; color: #1e293b; }
+        .btn-sm { padding: 7px 11px; font-size: 0.85rem; width: auto; }
+        
+        /* Kompaktnejsi kamerovy ramik (220px) */
+        .cam-wrapper { position: relative; width: 100%; height: 220px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+        #video { width: 100%; height: 100%; object-fit: cover; }
+        .scan-guide { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 3px solid #38bdf8; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.48); pointer-events: none; transition: all 0.2s; }
+        .guide-1line { width: 78%; height: 54px; }
+        .guide-2line { width: 52%; height: 96px; }
+        .cam-top-bar { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; align-items: center; z-index: 10; pointer-events: none; }
+        .ai-counter-pill { background: rgba(15, 23, 42, 0.82); color: #e2e8f0; font-size: 0.72rem; padding: 5px 9px; border-radius: 8px; font-weight: 600; }
+        #btn-stop-cam { pointer-events: auto; background: #dc2626; color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
 
         .toggle-row { display: flex; gap: 6px; margin-bottom: 8px; }
-        .toggle-btn { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #475569; }
-        .toggle-btn.active { background: #dbeafe; border-color: #2563eb; color: #1d4ed8; }
+        .toggle-btn { flex: 1; padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #475569; }
+        .toggle-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
 
-        #result-banner { display: none; padding: 12px; border-radius: 10px; text-align: center; margin-top: 10px; }
-        #result-banner.allowed { background: #dcfce7; border: 2px solid #16a34a; color: #14532d; }
-        #result-banner.denied { background: #fee2e2; border: 2px solid #dc2626; color: #7f1d1d; }
-        #result-plate { font-size: 1.65rem; font-weight: 900; font-family: monospace; letter-spacing: 2px; margin: 2px 0; }
-        #crop-preview { max-width: 180px; max-height: 60px; border: 1px solid #94a3b8; border-radius: 4px; margin-top: 6px; display: none; }
+        .result-box { padding: 14px; border-radius: 10px; text-align: center; margin-top: 10px; }
+        .res-ok { background: #dcfce7; border: 2px solid #16a34a; color: #14532d; }
+        .res-no { background: #fee2e2; border: 2px solid #dc2626; color: #7f1d1d; }
+        .res-plate { font-size: 1.7rem; font-weight: 900; letter-spacing: 2px; font-family: monospace; margin: 4px 0; }
+        
+        .crop-preview-wrap { margin-top: 8px; text-align: center; }
+        #crop-preview { max-width: 220px; max-height: 64px; border-radius: 6px; border: 1px solid #cbd5e1; display: none; margin: 4px auto 0 auto; }
 
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #f1f5f9; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
         .list-item:last-child { border-bottom: none; }
-        .plate-tag { font-family: monospace; font-weight: bold; font-size: 1.05rem; background: #f1f5f9; padding: 3px 7px; border-radius: 5px; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        .dot-green { background: #16a34a; }
-        .dot-red { background: #dc2626; }
+        .plate-tag { font-family: monospace; font-weight: bold; font-size: 1.05rem; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; border: 1px solid #cbd5e1; }
+
+        nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #cbd5e1; display: flex; z-index: 100; }
+        nav.bottom-nav button { flex: 1; padding: 10px 4px; border: none; background: none; font-size: 0.78rem; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+        nav.bottom-nav button.active { color: #2563eb; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>🚗 Kontrola Parkovania <small style="font-weight:normal;opacity:0.8;">v1.42</small></h1>
-    <div>
-        <span id="cloud-status" class="badge">⚪ Lokálne</span>
-        <button id="btn-logout" onclick="logout()" style="display:none; background:#dc2626; color:white; border:none; border-radius:6px; padding:4px 8px; font-size:0.78rem; margin-left:4px; cursor:pointer;">Odhlásiť</button>
+    <h1>🅿️ Parkovanie <span class="badge-ver">v1.44</span></h1>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span id="cloud-status" class="cloud-status">⏳ Pripájam...</span>
+        <button id="btn-logout" class="btn btn-secondary btn-sm hidden" onclick="logout()">Odhlásiť</button>
     </div>
 </header>
 
 <div class="container">
-    <!-- PRIHLÁSENIE -->
-    <div id="login-screen" class="card" style="margin-top: 25px;">
-        <h2 style="margin-top:0; text-align:center;">🔐 Prihlásenie</h2>
-        <input type="text" id="login-user" placeholder="Meno užívateľa" autocomplete="username">
+    <!-- PRIHLASENIE -->
+    <div id="login-view" class="card" style="margin-top: 20px;">
+        <h2 style="margin-top:0; text-align:center;">Prihlásenie</h2>
+        <input type="text" id="login-user" placeholder="Prihlasovacie meno" autocomplete="username">
         <input type="password" id="login-pass" placeholder="Heslo" autocomplete="current-password">
         <button id="btn-login-submit" class="btn btn-primary" onclick="doLogin()">Prihlásiť sa</button>
-        <div id="login-err" style="color:#dc2626; text-align:center; margin-top:10px; font-size:0.9rem;"></div>
+        <div id="login-err" style="color:#dc2626; font-size:0.9rem; margin-top:8px; text-align:center;"></div>
     </div>
 
-    <!-- HLAVNÁ APLIKÁCIA -->
-    <div id="main-app" style="display:none;">
+    <!-- HLAVNA APLIKACIA -->
+    <div id="app-view" class="hidden">
         
-        <!-- ZÁLOŽKA 1: SKENER -->
-        <div id="tab-scanner" class="tab-content active">
+        <!-- 1. SKENER -->
+        <div id="tab-scanner" class="tab-content">
             <div class="card">
-                <div id="camera-box">
-                    <div id="ai-counter">Dnes (flash / flash lite): 0/0</div>
-                    <button id="btn-stop-cam" onclick="stopCamera()">⏹️ Vypnúť</button>
-                    <video id="video" autoplay playsinline muted></video>
-                    <div id="guide-frame"></div>
-                    <button id="btn-start-cam" class="btn btn-primary" style="width:auto; padding:12px 20px;" onclick="startCamera()">🎥 Zapnúť kameru</button>
-                </div>
-
                 <div class="toggle-row">
-                    <button id="btn-row-1" class="toggle-btn active" onclick="setFrameMode(1)">1 riadok (ŠPZ)</button>
-                    <button id="btn-row-2" class="toggle-btn" onclick="setFrameMode(2)">2 riadky (Štvorec)</button>
+                    <button id="btn-line-1" class="toggle-btn active" onclick="setGuideLines(1)">📏 1 riadok</button>
+                    <button id="btn-line-2" class="toggle-btn" onclick="setGuideLines(2)">🔲 2 riadky</button>
                 </div>
 
                 <div class="toggle-row">
@@ -96,331 +93,386 @@
                     <button id="btn-mode-auto" class="toggle-btn" onclick="setScanMode('auto')">🚶 Auto-sken pri chôdzi</button>
                 </div>
 
-                <button id="btn-capture" class="btn btn-success" onclick="captureAndRead(false)" disabled>📸 Odfotiť a overiť ŠPZ</button>
-                <div id="scan-status" style="text-align:center; font-size:0.85rem; color:#475569; margin-top:6px;">Najprv zapnite kameru alebo zadajte ŠPZ ručne.</div>
+                <div id="cam-container" class="cam-wrapper hidden">
+                    <video id="video" autoplay playsinline muted></video>
+                    <div id="scan-guide" class="scan-guide guide-1line"></div>
+                    <div class="cam-top-bar">
+                        <span id="ai-counter" class="ai-counter-pill">Dnes (flash / flash lite): 0/0</span>
+                        <button id="btn-stop-cam" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
+                    </div>
+                </div>
 
-                <div id="result-banner">
-                    <div id="result-title" style="font-weight:bold; font-size:1rem;"></div>
-                    <div id="result-plate"></div>
-                    <div id="result-owner" style="font-size:0.95rem;"></div>
+                <button id="btn-start-cam" class="btn btn-primary" onclick="startCamera()">🎥 Zapnúť kameru</button>
+                <button id="btn-snap" class="btn btn-success hidden" onclick="captureAndRead(false)" style="margin-top:8px;">📸 Odfotiť a overiť ŠPZ</button>
+                <div id="auto-status" class="hidden" style="text-align:center; font-size:0.85rem; color:#2563eb; font-weight:600; margin-top:8px;">🚶 Auto-sken aktívny – kráčajte popri autách...</div>
+
+                <div class="crop-preview-wrap">
                     <img id="crop-preview" alt="Výrez ŠPZ">
                 </div>
+
+                <div id="scan-result"></div>
             </div>
 
             <div class="card">
+                <h3 style="margin-top:0; font-size:1rem;">⌨️ Rýchle ručné overenie</h3>
                 <div style="display:flex; gap:8px;">
-                    <input type="text" id="manual-plate" placeholder="Ručné zadanie ŠPZ (napr. AA222AK)" style="margin-bottom:0; text-transform:uppercase;">
-                    <button class="btn btn-primary btn-sm" onclick="verifyManual()">Overiť</button>
+                    <input type="text" id="manual-plate" placeholder="Zadajte ŠPZ (napr. BA123XY)" style="margin-bottom:0; text-transform:uppercase;">
+                    <button class="btn btn-primary btn-sm" onclick="verifyManualPlate()">Overiť</button>
                 </div>
             </div>
         </div>
 
-        <!-- ZÁLOŽKA 2: POVOLENÉ AUTÁ -->
-        <div id="tab-cars" class="tab-content">
-            <div class="card" id="admin-add-car" style="display:none;">
+        <!-- 2. POVOLENE AUTA -->
+        <div id="tab-cars" class="tab-content hidden">
+            <div class="card">
                 <h3 style="margin-top:0;">➕ Pridať povolené vozidlo</h3>
-                <input type="text" id="new-plate" placeholder="ŠPZ (napr. BA123XY)" style="text-transform:uppercase;">
+                <input type="text" id="new-plate" placeholder="ŠPZ (napr. NR123AB)" style="text-transform:uppercase;">
                 <input type="text" id="new-owner" placeholder="Meno / Firma / Poznámka">
                 <button class="btn btn-success" onclick="addCar()">Uložiť vozidlo</button>
+            </div>
 
-                <hr style="border:none; border-top:1px solid #e2e8f0; margin:14px 0;">
-                <h4 style="margin:0 0 8px 0;">📥 Hromadný import (CSV alebo text: SPZ;Meno)</h4>
-                <textarea id="bulk-cars" rows="3" placeholder="AA222AK;Ján Novák&#10;BL999XX;Firma s.r.o."></textarea>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-outline btn-sm" onclick="importBulkText()">Importovať text</button>
-                    <input type="file" id="csv-file" accept=".csv,.txt" style="display:none" onchange="importCSVFile(this)">
-                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('csv-file').click()">Nahrať CSV súbor</button>
-                </div>
+            <div id="bulk-import-card" class="card hidden">
+                <h3 style="margin-top:0;">📥 Hromadný import (CSV / Text)</h3>
+                <p style="font-size:0.82rem; color:#64748b; margin-top:0;">Formát: <code>SPZ;Meno</code> na každý riadok.</p>
+                <input type="file" id="csv-file" accept=".csv,.txt" onchange="importCSVFile(this)" style="margin-bottom:8px;">
+                <textarea id="bulk-text" rows="3" placeholder="BA111AA;Ján Novák&#10;NR222BB;Firma s.r.o."></textarea>
+                <button class="btn btn-secondary" onclick="importBulkText()">Importovať zo zoznamu</button>
             </div>
 
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <h3 style="margin:0;">📋 Povolené vozidlá (<span id="cars-count">0</span>)</h3>
-                </div>
-                <input type="text" id="search-car" placeholder="🔍 Hľadať ŠPZ alebo meno..." oninput="renderCars()">
+                <h3 style="margin-top:0;">🚗 Povolené vozidlá (<span id="cars-count">0</span>)</h3>
+                <input type="text" id="search-cars" placeholder="🔍 Hľadať ŠPZ alebo meno..." oninput="renderCars()">
                 <div id="cars-list"></div>
             </div>
         </div>
 
-        <!-- ZÁLOŽKA 3: HISTÓRIA -->
-        <div id="tab-history" class="tab-content">
+        <!-- 3. HISTORIA -->
+        <div id="tab-history" class="tab-content hidden">
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h3 style="margin:0;">🕒 História kontrol</h3>
-                    <div>
-                        <button class="btn btn-outline btn-sm" onclick="exportHistoryCSV()">📥 CSV</button>
-                        <button id="btn-clear-hist" class="btn btn-danger btn-sm" style="display:none;" onclick="clearHistory()">Zmazať</button>
+                    <h3 style="margin:0;">📋 História kontrol (<span id="hist-count">0</span>)</h3>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="exportHistoryCSV()">📥 CSV</button>
+                        <button id="btn-clear-hist" class="btn btn-danger btn-sm hidden" onclick="clearHistory()">Zmazať</button>
                     </div>
                 </div>
                 <div id="history-list"></div>
             </div>
         </div>
 
-        <!-- ZÁLOŽKA 4: UŽÍVATELIA A NASTAVENIA -->
-        <div id="tab-users" class="tab-content">
-            <div class="card" id="api-key-box" style="display:none;">
+        <!-- 4. UZIVATELIA A NASTAVENIA -->
+        <div id="tab-users" class="tab-content hidden">
+            <div id="api-key-card" class="card hidden">
                 <h3 style="margin-top:0;">🤖 Nastavenie AI skenera (Gemini API)</h3>
-                <input type="password" id="gemini-key-input" placeholder="Vložte Gemini API kľúč (začína na AIzaSy...)">
+                <input type="password" id="gemini-api-input" placeholder="Vložte Gemini API kľúč (začína na AIzaSy...)">
                 <button class="btn btn-success" onclick="saveApiKey()">💾 Uložiť API kľúč do cloudu</button>
-                <div id="api-key-status" style="margin-top:8px; font-size:0.85rem; font-weight:bold;"></div>
+                <div id="api-key-status" style="font-size:0.85rem; margin-top:8px; font-weight:600;"></div>
             </div>
 
-            <div class="card" id="users-manage-box" style="display:none;">
-                <h3 style="margin-top:0;">👥 Správa užívateľov</h3>
+            <div id="add-user-card" class="card hidden">
+                <h3 style="margin-top:0;">👤 Pridať užívateľa</h3>
                 <input type="text" id="new-username" placeholder="Prihlasovacie meno">
                 <input type="password" id="new-userpass" placeholder="Heslo">
-                <select id="new-userrole">
-                    <option value="U">Užívateľ (len kontrola)</option>
-                    <option value="A">Admin (správa áut a histórie)</option>
+                <select id="new-userrole" style="width:100%; padding:10px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:10px;">
+                    <option value="U">Užívateľ (U) – len kontrola a pridávanie áut</option>
+                    <option value="A">Admin (A) – plný prístup a mazanie</option>
                 </select>
-                <button class="btn btn-primary" onclick="addUser()">Pridať užívateľa</button>
-                <div id="users-list" style="margin-top:12px;"></div>
+                <button class="btn btn-primary" onclick="addUser()">Vytvoriť účet</button>
             </div>
 
             <div class="card">
-                <h3 style="margin-top:0;">🔑 Zmena môjho hesla</h3>
+                <h3 style="margin-top:0;">🔑 Zmena vlastného hesla</h3>
                 <input type="password" id="change-pass-input" placeholder="Nové heslo">
-                <button class="btn btn-outline" onclick="changeOwnPassword()">Zmeniť heslo</button>
+                <button class="btn btn-secondary" onclick="changeOwnPassword()">Zmeniť heslo</button>
+            </div>
+
+            <div id="users-list-card" class="card hidden">
+                <h3 style="margin-top:0;">👥 Zoznam užívateľov</h3>
+                <div id="users-list"></div>
             </div>
         </div>
-
     </div>
 </div>
 
-<nav class="nav-bar" id="nav-bar" style="display:none;">
-    <button class="nav-item active" onclick="switchTab('scanner', this)">📷 Skener</button>
-    <button class="nav-item" onclick="switchTab('cars', this)">🚗 Povolené</button>
-    <button class="nav-item" onclick="switchTab('history', this)">🕒 História</button>
-    <button class="nav-item" onclick="switchTab('users', this)">👤 Účet</button>
+<nav id="bottom-nav" class="bottom-nav hidden">
+    <button id="nav-scanner" class="active" onclick="switchTab('scanner')"><span>📷</span>Skener</button>
+    <button id="nav-cars" onclick="switchTab('cars')"><span>🚗</span>Povolené</button>
+    <button id="nav-history" onclick="switchTab('history')"><span>📋</span>História</button>
+    <button id="nav-users" onclick="switchTab('users')"><span>👤</span>Užívatelia</button>
 </nav>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+<script>
+    // 1. FIREBASE KONFIGURACIA
     const firebaseConfig = {
         apiKey: "AIzaSyDummyFirebaseKeyForParkovanieApp",
         authDomain: "parkovanie-app.firebaseapp.com",
         projectId: "parkovanie-app",
         storageBucket: "parkovanie-app.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abcdef"
+        messagingSenderId: "123456789012",
+        appId: "1:123456789012:web:abcdef123456"
     };
 
     let db = null;
     try {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
+        if (typeof firebase !== 'undefined') {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        }
     } catch (e) {
-        console.warn("Firebase init offline:", e);
+        console.warn("Firebase init info:", e);
     }
 
+    // 2. STAV APLIKACIE A LOKALNA PAMAT
     let currentUser = null;
-    let allowedCars = JSON.parse(localStorage.getItem('allowed_cars') || '[]');
-    let scanHistory = JSON.parse(localStorage.getItem('scan_history') || '[]');
-    let appUsers = JSON.parse(localStorage.getItem('app_users') || '[{"username":"admin","password":"1719","role":"A"}]');
-    let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+    let allowedCars = JSON.parse(localStorage.getItem('pk_cars') || '[]');
+    let scanHistory = JSON.parse(localStorage.getItem('pk_history') || '[]');
+    let appUsers = JSON.parse(localStorage.getItem('pk_users') || '[]');
+    let geminiApiKey = localStorage.getItem('pk_gemini_key') || '';
 
-    let videoStream = null;
-    let frameRows = 1;
-    let scanMode = 'manual';
-    let autoTimer = null;
-    let isReading = false;
-    let lastFrameData = null;
-    let lastAutoPlate = '';
-    let lastAutoTime = 0;
+    // 3. STABILNE PRIHLASENIE (NEDOTKNUTE, BEZ REGEXOV A ZATVORIEK)
+    function doLogin() {
+        const uEl = document.getElementById('login-user');
+        const pEl = document.getElementById('login-pass');
+        const errEl = document.getElementById('login-err');
+        const u = (uEl ? uEl.value : '').trim();
+        const p = (pEl ? pEl.value : '').trim();
 
-    // Inicializácia udalostí klávesnice
-    document.getElementById('login-pass').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') window.doLogin();
-    });
-    document.getElementById('manual-plate').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') window.verifyManual();
-    });
+        if (!u || !p) {
+            errEl.textContent = 'Zadajte meno a heslo.';
+            return;
+        }
 
-    // Počítadlo modelov
-    function getTodayKey() {
-        const d = new Date();
-        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+        // Superadmin ucet
+        if (u === 'admin' && p === '1719') {
+            completeLogin({ username: 'admin', role: 'S' });
+            return;
+        }
+
+        // Kontrola lokalnych uzivatelov
+        const found = appUsers.find(function(x) {
+            return x.username === u && x.password === p && x.username !== '_system_gemini_config';
+        });
+
+        if (found) {
+            completeLogin(found);
+        } else {
+            errEl.textContent = 'Nesprávne meno alebo heslo.';
+        }
     }
 
-    function updateCounterUI() {
-        const today = getTodayKey();
-        let stats = JSON.parse(localStorage.getItem('ai_stats_v42') || '{}');
+    function completeLogin(userObj) {
+        currentUser = userObj;
+        document.getElementById('login-err').textContent = '';
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('app-view').classList.remove('hidden');
+        document.getElementById('bottom-nav').classList.remove('hidden');
+        document.getElementById('btn-logout').classList.remove('hidden');
+
+        const isAdmin = (userObj.role === 'S' || userObj.role === 'A');
+        if (isAdmin) {
+            document.getElementById('bulk-import-card').classList.remove('hidden');
+            document.getElementById('btn-clear-hist').classList.remove('hidden');
+            document.getElementById('add-user-card').classList.remove('hidden');
+            document.getElementById('users-list-card').classList.remove('hidden');
+        }
+        if (userObj.role === 'S') {
+            document.getElementById('api-key-card').classList.remove('hidden');
+        }
+
+        updateApiKeyStatusUI();
+        updateCounterUI();
+        renderCars();
+        renderHistory();
+        renderUsers();
+    }
+
+    function logout() {
+        stopCamera();
+        currentUser = null;
+        document.getElementById('login-view').classList.remove('hidden');
+        document.getElementById('app-view').classList.add('hidden');
+        document.getElementById('bottom-nav').classList.add('hidden');
+        document.getElementById('btn-logout').classList.add('hidden');
+        document.getElementById('login-pass').value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const passInput = document.getElementById('login-pass');
+        if (passInput) {
+            passInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') doLogin();
+            });
+        }
+        const manualInput = document.getElementById('manual-plate');
+        if (manualInput) {
+            manualInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') verifyManualPlate();
+            });
+        }
+        initFirestoreSync();
+    });
+
+    // 4. SYNCHRONIZACIA S FIREBASE
+    function initFirestoreSync() {
+        const statusEl = document.getElementById('cloud-status');
+        if (!db) {
+            statusEl.textContent = '🟠 Offline režim';
+            return;
+        }
+
+        db.collection('allowed_cars').onSnapshot(function(snap) {
+            const arr = [];
+            snap.forEach(function(doc) {
+                const d = doc.data();
+                arr.push({ id: doc.id, plate: d.plate || '', owner: d.owner || '' });
+            });
+            allowedCars = arr;
+            localStorage.setItem('pk_cars', JSON.stringify(allowedCars));
+            renderCars();
+            statusEl.textContent = '🟢 Cloud OK';
+        }, function() {
+            statusEl.textContent = '🟠 Offline';
+        });
+
+        db.collection('scan_history').orderBy('timestamp', 'desc').limit(150).onSnapshot(function(snap) {
+            const arr = [];
+            snap.forEach(function(doc) {
+                const d = doc.data();
+                arr.push({
+                    id: doc.id,
+                    plate: d.plate || '',
+                    allowed: !!d.allowed,
+                    owner: d.owner || '',
+                    time: d.time || '',
+                    user: d.user || ''
+                });
+            });
+            scanHistory = arr;
+            localStorage.setItem('pk_history', JSON.stringify(scanHistory));
+            renderHistory();
+        }, function() {});
+
+        db.collection('app_users').onSnapshot(function(snap) {
+            const arr = [];
+            snap.forEach(function(doc) {
+                const d = doc.data();
+                if (doc.id === '_system_gemini_config' || d.username === '_system_gemini_config') {
+                    if (d.apiKey) {
+                        geminiApiKey = d.apiKey;
+                        localStorage.setItem('pk_gemini_key', geminiApiKey);
+                        updateApiKeyStatusUI();
+                    }
+                } else {
+                    arr.push({ id: doc.id, username: d.username, password: d.password, role: d.role || 'U' });
+                }
+            });
+            appUsers = arr;
+            localStorage.setItem('pk_users', JSON.stringify(appUsers));
+            renderUsers();
+        }, function() {});
+    }
+
+    // 5. SPRAVA API KLUCA A POCITADLA MODELOV
+    function saveApiKey() {
+        const val = document.getElementById('gemini-api-input').value.trim();
+        if (!val) return;
+        geminiApiKey = val;
+        localStorage.setItem('pk_gemini_key', geminiApiKey);
+        updateApiKeyStatusUI();
+
+        if (db) {
+            db.collection('app_users').doc('_system_gemini_config').set({
+                username: '_system_gemini_config',
+                apiKey: geminiApiKey,
+                updatedAt: new Date().toISOString()
+            }).then(function() {
+                updateApiKeyStatusUI();
+            }).catch(function(err) {
+                console.warn('Cloud save fallback to local:', err);
+            });
+        }
+    }
+
+    function updateApiKeyStatusUI() {
+        const st = document.getElementById('api-key-status');
+        const inp = document.getElementById('gemini-api-input');
+        if (!st) return;
+        if (geminiApiKey) {
+            st.textContent = '🟢 API kľúč je uložený a aktívny';
+            st.style.color = '#16a34a';
+            if (inp && !inp.value) inp.value = geminiApiKey;
+        } else {
+            st.textContent = '🔴 API kľúč nie je nastavený';
+            st.style.color = '#dc2626';
+        }
+    }
+
+    function getTodayStats() {
+        const today = new Date().toISOString().slice(0, 10);
+        let stats = JSON.parse(localStorage.getItem('pk_ai_stats') || '{}');
         if (stats.date !== today) {
             stats = { date: today, flash: 0, lite: 0 };
-            localStorage.setItem('ai_stats_v42', JSON.stringify(stats));
+            localStorage.setItem('pk_ai_stats', JSON.stringify(stats));
         }
-        document.getElementById('ai-counter').textContent = 'Dnes (flash / flash lite): ' + stats.flash + '/' + stats.lite;
+        return stats;
     }
 
     function incrementModelStat(modelName) {
-        const today = getTodayKey();
-        let stats = JSON.parse(localStorage.getItem('ai_stats_v42') || '{}');
-        if (stats.date !== today) {
-            stats = { date: today, flash: 0, lite: 0 };
-        }
+        const stats = getTodayStats();
         if (modelName.indexOf('lite') !== -1) {
             stats.lite += 1;
         } else {
             stats.flash += 1;
         }
-        localStorage.setItem('ai_stats_v42', JSON.stringify(stats));
+        localStorage.setItem('pk_ai_stats', JSON.stringify(stats));
         updateCounterUI();
     }
 
-    updateCounterUI();
-
-    // Cloud synchronizácia
-    if (db) {
-        try {
-            onSnapshot(collection(db, "allowed_cars"), (snap) => {
-                const list = [];
-                snap.forEach(d => list.push(d.data()));
-                allowedCars = list;
-                localStorage.setItem('allowed_cars', JSON.stringify(allowedCars));
-                document.getElementById('cloud-status').textContent = '🟢 Cloud OK';
-                renderCars();
-            });
-
-            onSnapshot(collection(db, "scan_history"), (snap) => {
-                const list = [];
-                snap.forEach(d => list.push(d.data()));
-                list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-                scanHistory = list.slice(0, 150);
-                localStorage.setItem('scan_history', JSON.stringify(scanHistory));
-                renderHistory();
-            });
-
-            onSnapshot(collection(db, "app_users"), (snap) => {
-                const list = [];
-                snap.forEach(d => {
-                    const data = d.data();
-                    if (d.id === '_system_gemini_config' && data.apiKey) {
-                        geminiApiKey = data.apiKey;
-                        localStorage.setItem('gemini_api_key', geminiApiKey);
-                        updateApiKeyUI();
-                    } else if (data.username) {
-                        list.push(data);
-                    }
-                });
-                if (!list.some(u => u.username === 'admin')) {
-                    list.unshift({ username: 'admin', password: '1719', role: 'A' });
-                }
-                appUsers = list;
-                localStorage.setItem('app_users', JSON.stringify(appUsers));
-                renderUsers();
-            });
-        } catch (err) {
-            console.warn("Snapshot error:", err);
+    function updateCounterUI() {
+        const stats = getTodayStats();
+        const el = document.getElementById('ai-counter');
+        if (el) {
+            el.textContent = 'Dnes (flash / flash lite): ' + stats.flash + '/' + stats.lite;
         }
     }
 
-    function updateApiKeyUI() {
-        const statusEl = document.getElementById('api-key-status');
-        const inputEl = document.getElementById('gemini-key-input');
-        if (geminiApiKey && geminiApiKey.length > 10) {
-            statusEl.textContent = '🟢 API kľúč je uložený a aktívny';
-            statusEl.style.color = '#16a34a';
-            inputEl.value = geminiApiKey;
-        } else {
-            statusEl.textContent = '🔴 API kľúč nie je nastavený';
-            statusEl.style.color = '#dc2626';
-        }
+    // 6. KAMERA A AUTO-SKEN PRI CHODZI
+    let videoStream = null;
+    let guideLines = 1;
+    let scanMode = 'manual';
+    let autoTimer = null;
+    let isReadingNow = false;
+    let prevFrameSig = null;
+    let lastAutoPlate = '';
+    let lastAutoTime = 0;
+
+    function setGuideLines(n) {
+        guideLines = n;
+        document.getElementById('btn-line-1').classList.toggle('active', n === 1);
+        document.getElementById('btn-line-2').classList.toggle('active', n === 2);
+        const g = document.getElementById('scan-guide');
+        g.className = 'scan-guide ' + (n === 1 ? 'guide-1line' : 'guide-2line');
     }
 
-    window.saveApiKey = async function() {
-        const val = document.getElementById('gemini-key-input').value.trim();
-        if (!val) return alert('Zadajte API kľúč.');
-        geminiApiKey = val;
-        localStorage.setItem('gemini_api_key', val);
-        updateApiKeyUI();
-        if (db) {
-            try {
-                await setDoc(doc(db, "app_users", "_system_gemini_config"), { apiKey: val });
-                alert('API kľúč bol uložený do cloudu aj zariadenia.');
-            } catch (e) {
-                alert('Uložené lokálne v zariadení (cloud zápis zablokovaný).');
-            }
-        }
-    };
-
-    // Prihlásenie
-    window.doLogin = function() {
-        const u = document.getElementById('login-user').value.trim();
-        const p = document.getElementById('login-pass').value.trim();
-        const found = appUsers.find(x => x.username === u && x.password === p);
-        if (!found) {
-            document.getElementById('login-err').textContent = 'Nesprávne meno alebo heslo.';
-            return;
-        }
-        currentUser = found;
-        document.getElementById('login-err').textContent = '';
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
-        document.getElementById('nav-bar').style.display = 'flex';
-        document.getElementById('btn-logout').style.display = 'inline-block';
-
-        const isAdmin = currentUser.role === 'A';
-        document.getElementById('admin-add-car').style.display = isAdmin ? 'block' : 'none';
-        document.getElementById('btn-clear-hist').style.display = isAdmin ? 'inline-block' : 'none';
-        document.getElementById('api-key-box').style.display = isAdmin ? 'block' : 'none';
-        document.getElementById('users-manage-box').style.display = isAdmin ? 'block' : 'none';
-
-        updateApiKeyUI();
-        renderCars();
-        renderHistory();
-        renderUsers();
-    };
-
-    window.logout = function() {
-        stopCamera();
-        currentUser = null;
-        document.getElementById('login-screen').style.display = 'block';
-        document.getElementById('main-app').style.display = 'none';
-        document.getElementById('nav-bar').style.display = 'none';
-        document.getElementById('btn-logout').style.display = 'none';
-    };
-
-    window.switchTab = function(tabName, btn) {
-        if (tabName !== 'scanner') {
-            stopCamera();
-        }
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById('tab-' + tabName).classList.add('active');
-        btn.classList.add('active');
-    };
-
-    // Kamera a režimy
-    window.setFrameMode = function(rows) {
-        frameRows = rows;
-        document.getElementById('btn-row-1').classList.toggle('active', rows === 1);
-        document.getElementById('btn-row-2').classList.toggle('active', rows === 2);
-        document.getElementById('guide-frame').classList.toggle('two-rows', rows === 2);
-    };
-
-    window.setScanMode = function(mode) {
+    function setScanMode(mode) {
         scanMode = mode;
         document.getElementById('btn-mode-manual').classList.toggle('active', mode === 'manual');
         document.getElementById('btn-mode-auto').classList.toggle('active', mode === 'auto');
-        if (autoTimer) {
-            clearInterval(autoTimer);
-            autoTimer = null;
-        }
-        if (mode === 'auto' && videoStream) {
-            document.getElementById('scan-status').textContent = '🚶 Auto-sken aktívny (sníma každé 4,5 s pri zmene obrazu)...';
-            autoTimer = setInterval(() => {
-                if (!isReading && videoStream) {
-                    captureAndRead(true);
-                }
-            }, 4500);
-        } else if (videoStream) {
-            document.getElementById('scan-status').textContent = 'Kamera pripravená. Namierte rámik na ŠPZ.';
-        }
-    };
 
-    window.startCamera = async function() {
+        if (videoStream) {
+            if (mode === 'auto') {
+                document.getElementById('btn-snap').classList.add('hidden');
+                document.getElementById('auto-status').classList.remove('hidden');
+                startAutoLoop();
+            } else {
+                stopAutoLoop();
+                document.getElementById('auto-status').classList.add('hidden');
+                document.getElementById('btn-snap').classList.remove('hidden');
+            }
+        }
+    }
+
+    async function startCamera() {
         try {
             videoStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -428,259 +480,279 @@
             });
             const video = document.getElementById('video');
             video.srcObject = videoStream;
-            video.style.display = 'block';
-            document.getElementById('guide-frame').style.display = 'block';
-            document.getElementById('ai-counter').style.display = 'block';
-            document.getElementById('btn-stop-cam').style.display = 'block';
-            document.getElementById('btn-start-cam').style.display = 'none';
-            document.getElementById('btn-capture').disabled = false;
+            document.getElementById('cam-container').classList.remove('hidden');
+            document.getElementById('btn-start-cam').classList.add('hidden');
             updateCounterUI();
-            setScanMode(scanMode);
+
+            if (scanMode === 'auto') {
+                document.getElementById('auto-status').classList.remove('hidden');
+                startAutoLoop();
+            } else {
+                document.getElementById('btn-snap').classList.remove('hidden');
+            }
         } catch (err) {
             alert('Nepodarilo sa spustiť kameru: ' + err.message);
         }
-    };
+    }
 
-    window.stopCamera = function() {
+    function stopCamera() {
+        stopAutoLoop();
+        isReadingNow = false;
+        if (videoStream) {
+            videoStream.getTracks().forEach(function(t) { t.stop(); });
+            videoStream = null;
+        }
+        const video = document.getElementById('video');
+        if (video) video.srcObject = null;
+        document.getElementById('cam-container').classList.add('hidden');
+        document.getElementById('btn-start-cam').classList.remove('hidden');
+        document.getElementById('btn-snap').classList.add('hidden');
+        document.getElementById('auto-status').classList.add('hidden');
+    }
+
+    function startAutoLoop() {
+        stopAutoLoop();
+        prevFrameSig = null;
+        autoTimer = setInterval(function() {
+            if (!videoStream || isReadingNow) return;
+            captureAndRead(true);
+        }, 4500);
+    }
+
+    function stopAutoLoop() {
         if (autoTimer) {
             clearInterval(autoTimer);
             autoTimer = null;
         }
-        isReading = false;
-        if (videoStream) {
-            videoStream.getTracks().forEach(t => t.stop());
-            videoStream = null;
-        }
+    }
+
+    // 7. VYREZ OBRAZU, DETEKCIA ZMENY A GEMINI AI
+    function getCroppedPlateBase64(checkChangeOnly) {
         const video = document.getElementById('video');
-        video.style.display = 'none';
-        video.srcObject = null;
-        document.getElementById('guide-frame').style.display = 'none';
-        document.getElementById('ai-counter').style.display = 'none';
-        document.getElementById('btn-stop-cam').style.display = 'none';
-        document.getElementById('btn-start-cam').style.display = 'inline-flex';
-        document.getElementById('btn-capture').disabled = true;
-        document.getElementById('scan-status').textContent = 'Kamera je vypnutá.';
-    };
-
-    function playTone(allowed) {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            osc.type = 'sine';
-            if (allowed) {
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                osc.frequency.setValueAtTime(1180, ctx.currentTime + 0.12);
-                osc.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.25);
-            } else {
-                osc.frequency.setValueAtTime(320, ctx.currentTime);
-                osc.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.35);
-            }
-        } catch (e) {}
-    }
-
-    function normalizePlate(str) {
-        return (str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    }
-
-    // Inteligentná oprava zámen 0/O, 1/I, 8/B/R, 5/S, 2/Z a zdvojených znakov podľa databázy
-    function smartMatchPlate(rawPlate) {
-        const clean = normalizePlate(rawPlate);
-        if (!clean) return '';
-
-        // 1. Presná zhoda
-        const exact = allowedCars.find(c => normalizePlate(c.plate) === clean);
-        if (exact) return normalizePlate(exact.plate);
-
-        // 2. Vizuálne zameniteľné znaky (0<->O, 1<->I, 8<->B/R, 5<->S, 2<->Z)
-        const skeleton = (s) => s
-            .replace(/O/g, '0')
-            .replace(/I/g, '1')
-            .replace(/[BR]/g, '8')
-            .replace(/S/g, '5')
-            .replace(/Z/g, '2');
-
-        const cleanSkel = skeleton(clean);
-        const visualMatch = allowedCars.find(c => skeleton(normalizePlate(c.plate)) === cleanSkel);
-        if (visualMatch) return normalizePlate(visualMatch.plate);
-
-        // 3. Oprava jedného zdvojeného znaku (napr. AA2222AK -> AA222AK)
-        for (let i = 0; i < clean.length - 1; i++) {
-            if (clean.charAt(i) === clean.charAt(i + 1)) {
-                const candidate = clean.slice(0, i) + clean.slice(i + 1);
-                const dupMatch = allowedCars.find(c => normalizePlate(c.plate) === candidate || skeleton(normalizePlate(c.plate)) === skeleton(candidate));
-                if (dupMatch) return normalizePlate(dupMatch.plate);
-            }
-        }
-
-        return clean;
-    }
-
-    function hasSceneChanged(canvas) {
-        const small = document.createElement('canvas');
-        small.width = 32;
-        small.height = 16;
-        const sctx = small.getContext('2d');
-        sctx.drawImage(canvas, 0, 0, 32, 16);
-        const data = sctx.getImageData(0, 0, 32, 16).data;
-        if (!lastFrameData) {
-            lastFrameData = data;
-            return true;
-        }
-        let diff = 0;
-        for (let i = 0; i < data.length; i += 4) {
-            diff += Math.abs(data[i] - lastFrameData[i]);
-        }
-        lastFrameData = data;
-        const avgDiff = diff / (32 * 16);
-        return avgDiff > 12;
-    }
-
-    async function callGeminiWithTimeout(model, base64Image, promptText, timeoutMs) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(geminiApiKey);
-
-        try {
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: promptText },
-                            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-                        ]
-                    }],
-                    generationConfig: { temperature: 0.0, maxOutputTokens: 25 }
-                })
-            });
-            clearTimeout(timer);
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const json = await resp.json();
-            const candidate = json.candidates && json.candidates.at(0);
-            const part = candidate && candidate.content && candidate.content.parts && candidate.content.parts.at(0);
-            return part ? part.text.trim() : '';
-        } catch (err) {
-            clearTimeout(timer);
-            throw err;
-        }
-    }
-
-    window.captureAndRead = async function(isAuto) {
-        if (!videoStream || isReading) return;
-        if (!geminiApiKey) {
-            if (!isAuto) alert('Chýba Gemini API kľúč! Nastavte ho v karte Účet.');
-            return;
-        }
-
-        const video = document.getElementById('video');
-        if (!video.videoWidth) return;
+        if (!video || !video.videoWidth) return null;
 
         const vw = video.videoWidth;
         const vh = video.videoHeight;
-        const cropW = frameRows === 2 ? vw * 0.55 : vw * 0.78;
-        const cropH = frameRows === 2 ? vh * 0.52 : vh * 0.30;
-        const cropX = (vw - cropW) / 2;
-        const cropY = (vh - cropH) / 2;
+        const cw = guideLines === 1 ? Math.round(vw * 0.78) : Math.round(vw * 0.52);
+        const ch = guideLines === 1 ? Math.round(vh * 0.28) : Math.round(vh * 0.46);
+        const sx = Math.round((vw - cw) / 2);
+        const sy = Math.round((vh - ch) / 2);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(cropW);
-        canvas.height = Math.round(cropH);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
-
-        if (isAuto && !hasSceneChanged(canvas)) {
-            return;
-        }
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const base64Image = dataUrl.split(',').at(1);
-
-        const preview = document.getElementById('crop-preview');
-        preview.src = dataUrl;
-        preview.style.display = 'inline-block';
-
-        isReading = true;
-        const btnCap = document.getElementById('btn-capture');
-        const statusEl = document.getElementById('scan-status');
-        btnCap.disabled = true;
-        statusEl.textContent = isAuto ? '🚶 Auto-sken: AI analyzuje záber...' : '⏳ AI číta ŠPZ...';
-
-        const promptText =
-            "Prečítaj evidenčné číslo vozidla (ŠPZ) z obrázka. Podporované sú slovenské (SK), české (CZ), nemecké (D), rakúske (A), ukrajinské (UA) aj individuálne písmenové značky. " +
-            "PRAVIDLÁ: " +
-            "1. Vráť IBA samotné znaky značky bez medzier a pomlčiek (napr. AA222AK). " +
-            "2. Ignoruj modrý pruh s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky aj nálepky STK/EK. " +
-            "3. NIKDY NEHÁDAJ: Ak na fotke nie je zreteľná ŠPZ alebo je rozmazaná, vráť výhradne slovo NONE. " +
-            "4. PRESNOSŤ ZNAKOV: Dôsledne rozlišuj nulu 0 od písmena O, jednotku 1 od písmena I, osmičku 8 od písmen B a R, päťku 5 od S a dvojku 2 od Z. Nezdvojuj rovnaké znaky.";
-
-        // Prioritne rýchly lite model (3.5s timeout), záloha 3.8-flash (4.5s timeout)
-        const models = [
-            { name: 'gemini-3.5-flash-lite', timeout: 3500 },
-            { name: 'gemini-3.8-flash', timeout: 4500 }
-        ];
-
-        let rawAnswer = '';
-        let usedModel = '';
-
-        for (let i = 0; i < models.length; i++) {
-            try {
-                rawAnswer = await callGeminiWithTimeout(models.at(i).name, base64Image, promptText, models.at(i).timeout);
-                usedModel = models.at(i).name;
-                break;
-            } catch (e) {
-                console.warn('Model zlyhal:', models.at(i).name, e);
+        // Kontrola zmeny obrazu pre setrenie kreditov v auto rezime
+        if (checkChangeOnly) {
+            const tiny = document.createElement('canvas');
+            tiny.width = 32;
+            tiny.height = 16;
+            const tctx = tiny.getContext('2d');
+            tctx.drawImage(video, sx, sy, cw, ch, 0, 0, 32, 16);
+            const data = tctx.getImageData(0, 0, 32, 16).data;
+            const sig = [];
+            for (let i = 0; i < data.length; i += 16) {
+                sig.push(Math.round((data.at(i) + data.at(i + 1) + data.at(i + 2)) / 3));
+            }
+            if (prevFrameSig) {
+                let diff = 0;
+                for (let j = 0; j < sig.length; j++) {
+                    diff += Math.abs(sig.at(j) - prevFrameSig.at(j));
+                }
+                const avgDiff = diff / sig.length;
+                prevFrameSig = sig;
+                if (avgDiff < 8) return 'NO_CHANGE';
+            } else {
+                prevFrameSig = sig;
             }
         }
 
-        isReading = false;
-        if (videoStream) btnCap.disabled = false;
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
 
-        if (!usedModel) {
-            statusEl.textContent = isAuto ? '🚶 Auto-sken: server zaneprázdnený, pokračujem...' : '⚠️ Chyba pri čítaní: AI server neodpovedal včas.';
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const prevImg = document.getElementById('crop-preview');
+        if (prevImg) {
+            prevImg.src = dataUrl;
+            prevImg.style.display = 'block';
+        }
+        return dataUrl.split(',').at(1);
+    }
+
+    async function captureAndRead(isAuto) {
+        if (!geminiApiKey) {
+            if (!isAuto) alert('Chýba Gemini API kľúč! Zadajte ho v záložke Užívatelia.');
+            return;
+        }
+        if (isReadingNow) return;
+
+        const base64Img = getCroppedPlateBase64(isAuto);
+        if (!base64Img || base64Img === 'NO_CHANGE') return;
+
+        isReadingNow = true;
+        const snapBtn = document.getElementById('btn-snap');
+        if (!isAuto && snapBtn) {
+            snapBtn.disabled = true;
+            snapBtn.textContent = '⏳ Čítam ŠPZ...';
+        }
+
+        const promptText =
+            "Prečítaj evidenčné číslo vozidla (ŠPZ) na obrázku. " +
+            "Podporované sú slovenské (SK), české (CZ), nemecké (D), rakúske (A), ukrajinské (UA) aj čisto písmenové značky na želanie. " +
+            "PRÍSNE PRAVIDLÁ: " +
+            "1. Vráť VÝHRADNE čistý alfanumerický text značky VEĽKÝMI PÍSMENAMI bez medzier, pomlčiek, bodiek a bez kódu krajiny v modrom pruhu (ignoruj SK, CZ, D, A, UA, erby a nálepky STK). " +
+            "2. Ak na obrázku nie je zreteľná ŠPZ alebo je rozmazaná, vráť výhradne slovo NONE – nikdy si znaky nevymýšľaj ani nehádaj. " +
+            "3. Presne spočítaj rovnaké znaky vedľa seba (napr. 222 nie je 2222). " +
+            "4. Dávaj maximálny pozor na zámenu podobných znakov: nula 0 vs písmeno O, jednotka 1 vs písmeno I, osmička 8 vs písmeno B alebo R, päťka 5 vs písmeno S, dvojka 2 vs písmeno Z.";
+
+        // Rychly lite model na prvom mieste (odozva do 1s), 3.8-flash ako zaloha
+        const models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+        let detectedPlate = null;
+
+        for (let m = 0; m < models.length; m++) {
+            const modelName = models.at(m);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(function() { controller.abort(); }, 3500);
+
+            try {
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey);
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: 'image/jpeg', data: base64Img } }
+                            ]
+                        }],
+                        generationConfig: { temperature: 0.0, maxOutputTokens: 25 }
+                    })
+                });
+                clearTimeout(timeoutId);
+
+                if (!resp.ok) continue;
+                const json = await resp.json();
+                const cand = json.candidates && json.candidates.at(0);
+                const part = cand && cand.content && cand.content.parts && cand.content.parts.at(0);
+                const rawText = part && part.text ? part.text.trim().toUpperCase() : '';
+
+                if (rawText) {
+                    incrementModelStat(modelName);
+                    const cleaned = cleanPlateString(rawText);
+                    if (cleaned && cleaned !== 'NONE' && cleaned.length >= 2 && cleaned.length <= 10) {
+                        detectedPlate = cleaned;
+                        break;
+                    } else if (cleaned === 'NONE') {
+                        detectedPlate = 'NONE';
+                        break;
+                    }
+                }
+            } catch (e) {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        isReadingNow = false;
+        if (!isAuto && snapBtn) {
+            snapBtn.disabled = false;
+            snapBtn.textContent = '📸 Odfotiť a overiť ŠPZ';
+        }
+
+        if (!detectedPlate || detectedPlate === 'NONE') {
+            if (!isAuto) {
+                document.getElementById('scan-result').innerHTML =
+                    '<div class="result-box res-no">❌ ŠPZ sa nepodarilo zreteľne prečítať. Skúste priblížiť alebo zaostriť.</div>';
+            }
             return;
         }
 
-        incrementModelStat(usedModel);
+        const matchedPlate = smartMatchPlate(detectedPlate);
+        processVerifiedPlate(matchedPlate, isAuto);
+    }
 
-        const cleaned = normalizePlate(rawAnswer);
-        if (!cleaned || cleaned === 'NONE' || cleaned.length < 3 || cleaned.length > 10) {
-            statusEl.textContent = isAuto ? '🚶 Auto-sken: žiadna ŠPZ v zábere...' : '⚠️ ŠPZ sa nepodarilo zreteľne prečítať. Skúste znova.';
-            return;
+    // 8. CISTENIE A INTELIGENTNA OPRAVA ZAMIEN (0/O, 1/I, 8/B/R, 5/S, 2/Z + ZDVOJENIA)
+    function cleanPlateString(str) {
+        const noDiacritics = str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return noDiacritics.replace(/[^A-Z0-9]/g, '');
+    }
+
+    function toVisualSkeleton(s) {
+        let out = '';
+        for (let i = 0; i < s.length; i++) {
+            const ch = s.charAt(i);
+            if (ch === 'O' || ch === '0' || ch === 'Q' || ch === 'D') out += '0';
+            else if (ch === 'I' || ch === '1' || ch === 'L') out += '1';
+            else if (ch === 'B' || ch === 'R' || ch === '8') out += '8';
+            else if (ch === 'S' || ch === '5') out += '5';
+            else if (ch === 'Z' || ch === '2') out += '2';
+            else out += ch;
+        }
+        return out;
+    }
+
+    function smartMatchPlate(plate) {
+        // 1. Presna zhoda v databaze
+        const exact = allowedCars.find(function(c) { return c.plate === plate; });
+        if (exact) return exact.plate;
+
+        // 2. Zhoda cez vizualne podobne znaky (0/O, 1/I, 8/B/R, 5/S, 2/Z)
+        const skel = toVisualSkeleton(plate);
+        const visualMatch = allowedCars.find(function(c) {
+            return c.plate.length === plate.length && toVisualSkeleton(c.plate) === skel;
+        });
+        if (visualMatch) return visualMatch.plate;
+
+        // 3. Oprava nahodneho zdvojenia znaku (napr. AA2222AK -> AA222AK)
+        for (let i = 0; i < plate.length - 1; i++) {
+            if (plate.charAt(i) === plate.charAt(i + 1)) {
+                const candidate = plate.slice(0, i) + plate.slice(i + 1);
+                const candSkel = toVisualSkeleton(candidate);
+                const dupMatch = allowedCars.find(function(c) {
+                    return c.plate === candidate || (c.plate.length === candidate.length && toVisualSkeleton(c.plate) === candSkel);
+                });
+                if (dupMatch) return dupMatch.plate;
+            }
         }
 
-        const finalPlate = smartMatchPlate(cleaned);
-        processPlateResult(finalPlate, isAuto);
-    };
+        return plate;
+    }
 
-    window.verifyManual = function() {
+    // 9. OVERENIE VOZIDLA, ZVUK A ZAPIS DO HISTORIE
+    function verifyManualPlate() {
         const inp = document.getElementById('manual-plate');
-        const plate = smartMatchPlate(inp.value);
-        if (!plate) return;
+        const cleaned = cleanPlateString(inp.value.toUpperCase());
+        if (!cleaned) return;
         inp.value = '';
-        document.getElementById('crop-preview').style.display = 'none';
-        processPlateResult(plate, false);
-    };
+        const matched = smartMatchPlate(cleaned);
+        processVerifiedPlate(matched, false);
+    }
 
-    function processPlateResult(plate, isAuto) {
-        const car = allowedCars.find(c => normalizePlate(c.plate) === plate);
-        const isAllowed = !!car;
+    function processVerifiedPlate(plate, isAuto) {
+        const car = allowedCars.find(function(c) { return c.plate === plate; });
+        const allowed = !!car;
+        const owner = car ? car.owner : 'Neznáme vozidlo';
 
-        const banner = document.getElementById('result-banner');
-        banner.style.display = 'block';
-        banner.className = isAllowed ? 'allowed' : 'denied';
-        document.getElementById('result-title').textContent = isAllowed ? '✅ POVOLENÉ VOZIDLO' : '⛔ NEPOVOLENÉ VOZIDLO';
-        document.getElementById('result-plate').textContent = plate;
-        document.getElementById('result-owner').textContent = isAllowed ? (car.owner || 'Povolený vjazd') : 'Vozidlo nie je v zozname!';
+        playBeep(allowed);
 
-        playTone(isAllowed);
-        document.getElementById('scan-status').textContent = isAuto ? '🚶 Auto-sken beží ďalej...' : 'Hotovo.';
+        const resEl = document.getElementById('scan-result');
+        if (allowed) {
+            resEl.innerHTML =
+                '<div class="result-box res-ok">' +
+                '<div style="font-weight:bold; font-size:1.1rem;">✅ POVOLENÉ VOZIDLO</div>' +
+                '<div class="res-plate">' + escapeHtml(plate) + '</div>' +
+                '<div>' + escapeHtml(owner) + '</div>' +
+                '</div>';
+        } else {
+            resEl.innerHTML =
+                '<div class="result-box res-no">' +
+                '<div style="font-weight:bold; font-size:1.1rem;">⛔ NEPOVOLENÉ VOZIDLO</div>' +
+                '<div class="res-plate">' + escapeHtml(plate) + '</div>' +
+                '<div>Nie je v zozname povolených</div>' +
+                '</div>';
+        }
 
+        // Ochrana proti duplicitnemu zapisu pri auto-skene (20s)
         const now = Date.now();
         if (isAuto && plate === lastAutoPlate && (now - lastAutoTime) < 20000) {
             return;
@@ -689,244 +761,250 @@
         lastAutoTime = now;
 
         const entry = {
-            id: String(now),
             plate: plate,
-            allowed: isAllowed,
-            owner: isAllowed ? (car.owner || '') : 'Nepovolené',
-            user: currentUser ? currentUser.username : 'neznámy',
+            allowed: allowed,
+            owner: owner,
             time: new Date().toLocaleString('sk-SK'),
-            ts: now
+            timestamp: now,
+            user: currentUser ? currentUser.username : 'neznamy'
         };
 
         scanHistory.unshift(entry);
-        localStorage.setItem('scan_history', JSON.stringify(scanHistory));
+        localStorage.setItem('pk_history', JSON.stringify(scanHistory));
         renderHistory();
 
         if (db) {
-            setDoc(doc(db, "scan_history", entry.id), entry).catch(() => {});
+            db.collection('scan_history').add(entry).catch(function() {});
         }
     }
 
-    // Správa povolených áut
-    window.addCar = function() {
-        const p = normalizePlate(document.getElementById('new-plate').value);
-        const o = document.getElementById('new-owner').value.trim();
-        if (!p) return alert('Zadajte ŠPZ.');
-        const item = { plate: p, owner: o };
-        allowedCars = allowedCars.filter(c => normalizePlate(c.plate) !== p);
-        allowedCars.unshift(item);
-        localStorage.setItem('allowed_cars', JSON.stringify(allowedCars));
-        renderCars();
-        document.getElementById('new-plate').value = '';
-        document.getElementById('new-owner').value = '';
-        if (db) {
-            setDoc(doc(db, "allowed_cars", p), item).catch(() => {});
-        }
-    };
-
-    window.removeCar = function(plate) {
-        if (!confirm('Odstrániť ' + plate + '?')) return;
-        allowedCars = allowedCars.filter(c => normalizePlate(c.plate) !== plate);
-        localStorage.setItem('allowed_cars', JSON.stringify(allowedCars));
-        renderCars();
-        if (db) {
-            deleteDoc(doc(db, "allowed_cars", plate)).catch(() => {});
-        }
-    };
-
-    window.importBulkText = function() {
-        const raw = document.getElementById('bulk-cars').value;
-        parseAndSaveBulk(raw);
-        document.getElementById('bulk-cars').value = '';
-    };
-
-    window.importCSVFile = function(input) {
-        const file = input.files && input.files.at(0);
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            parseAndSaveBulk(e.target.result);
-        };
-        reader.readAsText(file);
-        input.value = '';
-    };
-
-    function parseAndSaveBulk(text) {
-        const lines = (text || '').split(/?
-/);
-        let added = 0;
-        lines.forEach(line => {
-            const parts = line.split(/[;,]/);
-            const p = normalizePlate(parts.at(0));
-            const o = (parts.at(1) || '').trim();
-            if (p && p.length >= 3) {
-                const item = { plate: p, owner: o };
-                allowedCars = allowedCars.filter(c => normalizePlate(c.plate) !== p);
-                allowedCars.push(item);
-                if (db) setDoc(doc(db, "allowed_cars", p), item).catch(() => {});
-                added++;
+    function playBeep(isOk) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            if (isOk) {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.16);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(240, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.35);
             }
-        });
-        localStorage.setItem('allowed_cars', JSON.stringify(allowedCars));
+        } catch (e) {}
+    }
+
+    // 10. SPRAVA POVOLENYCH VOZIDIEL, HISTORIE A UZIVATELOV
+    function addCar() {
+        const pInp = document.getElementById('new-plate');
+        const oInp = document.getElementById('new-owner');
+        const plate = cleanPlateString(pInp.value.toUpperCase());
+        const owner = oInp.value.trim();
+        if (!plate) return;
+
+        pInp.value = '';
+        oInp.value = '';
+
+        const existing = allowedCars.find(function(c) { return c.plate === plate; });
+        if (existing) {
+            alert('Toto vozidlo už je v zozname.');
+            return;
+        }
+
+        const item = { plate: plate, owner: owner || 'Bez mena' };
+        allowedCars.push(item);
+        localStorage.setItem('pk_cars', JSON.stringify(allowedCars));
         renderCars();
-        alert('Importovaných vozidiel: ' + added);
+
+        if (db) {
+            db.collection('allowed_cars').add(item).catch(function() {});
+        }
+    }
+
+    function removeCar(id, plate) {
+        if (!confirm('Odstrániť vozidlo ' + plate + '?')) return;
+        allowedCars = allowedCars.filter(function(c) { return c.plate !== plate; });
+        localStorage.setItem('pk_cars', JSON.stringify(allowedCars));
+        renderCars();
+
+        if (db && id) {
+            db.collection('allowed_cars').doc(id).delete().catch(function() {});
+        }
     }
 
     function renderCars() {
-        const q = (document.getElementById('search-car').value || '').toUpperCase();
-        const filtered = allowedCars.filter(c =>
-            c.plate.toUpperCase().indexOf(q) !== -1 || (c.owner || '').toUpperCase().indexOf(q) !== -1
-        );
+        const q = (document.getElementById('search-cars').value || '').trim().toUpperCase();
+        const filtered = allowedCars.filter(function(c) {
+            return c.plate.indexOf(q) !== -1 || c.owner.toUpperCase().indexOf(q) !== -1;
+        });
         document.getElementById('cars-count').textContent = allowedCars.length;
-        const isAdmin = currentUser && currentUser.role === 'A';
-        const container = document.getElementById('cars-list');
-        container.innerHTML = '';
+        const isAdmin = currentUser && (currentUser.role === 'S' || currentUser.role === 'A');
 
-        filtered.forEach(c => {
-            const row = document.createElement('div');
-            row.className = 'list-item';
+        document.getElementById('cars-list').innerHTML = filtered.map(function(c) {
+            const delBtn = isAdmin ? '<button class="btn btn-danger btn-sm" onclick="removeCar('' + (c.id || '') + '', '' + c.plate + '')">🗑️</button>' : '';
+            return '<div class="list-item">' +
+                '<div><span class="plate-tag">' + escapeHtml(c.plate) + '</span> <span style="margin-left:8px;">' + escapeHtml(c.owner) + '</span></div>' +
+                delBtn +
+                '</div>';
+        }).join('');
+    }
 
-            const left = document.createElement('div');
-            const tag = document.createElement('span');
-            tag.className = 'plate-tag';
-            tag.textContent = c.plate;
-            const ownerSpan = document.createElement('span');
-            ownerSpan.style.marginLeft = '8px';
-            ownerSpan.style.fontSize = '0.9rem';
-            ownerSpan.textContent = c.owner || '';
-            left.appendChild(tag);
-            left.appendChild(ownerSpan);
-            row.appendChild(left);
+    function importBulkText() {
+        const txt = document.getElementById('bulk-text').value;
+        processBulkLines(txt);
+        document.getElementById('bulk-text').value = '';
+    }
 
-            if (isAdmin) {
-                const delBtn = document.createElement('button');
-                delBtn.className = 'btn btn-danger btn-sm';
-                delBtn.textContent = '✕';
-                delBtn.onclick = () => window.removeCar(c.plate);
-                row.appendChild(delBtn);
+    function importCSVFile(input) {
+        if (!input.files || !input.files.at(0)) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            processBulkLines(e.target.result);
+        };
+        reader.readAsText(input.files.at(0), 'UTF-8');
+        input.value = '';
+    }
+
+    function processBulkLines(text) {
+        const lines = text.split(/?
+/);
+        let added = 0;
+        lines.forEach(function(line) {
+            const parts = line.split(';');
+            const plate = cleanPlateString((parts.at(0) || '').toUpperCase());
+            const owner = (parts.at(1) || 'Import').trim();
+            if (plate && !allowedCars.find(function(c) { return c.plate === plate; })) {
+                const item = { plate: plate, owner: owner };
+                allowedCars.push(item);
+                added++;
+                if (db) db.collection('allowed_cars').add(item).catch(function() {});
             }
-            container.appendChild(row);
         });
+        localStorage.setItem('pk_cars', JSON.stringify(allowedCars));
+        renderCars();
+        alert('Importovaných nových vozidiel: ' + added);
     }
 
-    // História
     function renderHistory() {
-        const container = document.getElementById('history-list');
-        container.innerHTML = '';
-        scanHistory.forEach(h => {
-            const row = document.createElement('div');
-            row.className = 'list-item';
-
-            const left = document.createElement('div');
-            const dot = document.createElement('span');
-            dot.className = 'dot ' + (h.allowed ? 'dot-green' : 'dot-red');
-            const tag = document.createElement('span');
-            tag.className = 'plate-tag';
-            tag.textContent = h.plate;
-            const info = document.createElement('div');
-            info.style.fontSize = '0.78rem';
-            info.style.color = '#64748b';
-            info.style.marginTop = '2px';
-            info.textContent = h.time + ' • ' + (h.owner || '') + ' (' + (h.user || '') + ')';
-
-            left.appendChild(dot);
-            left.appendChild(tag);
-            left.appendChild(info);
-            row.appendChild(left);
-            container.appendChild(row);
-        });
+        document.getElementById('hist-count').textContent = scanHistory.length;
+        document.getElementById('history-list').innerHTML = scanHistory.map(function(h) {
+            const dot = h.allowed ? '🟢' : '🔴';
+            return '<div class="list-item">' +
+                '<div>' + dot + ' <span class="plate-tag">' + escapeHtml(h.plate) + '</span> <span style="font-size:0.88rem; margin-left:6px;">' + escapeHtml(h.owner) + '</span>' +
+                '<div style="font-size:0.76rem; color:#64748b; margin-top:3px;">' + escapeHtml(h.time) + ' (' + escapeHtml(h.user) + ')</div></div>' +
+                '</div>';
+        }).join('');
     }
 
-    window.clearHistory = async function() {
-        if (!confirm('Naozaj zmazať celú históriu?')) return;
+    function clearHistory() {
+        if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
         const old = scanHistory.slice();
         scanHistory = [];
-        localStorage.removeItem('scan_history');
+        localStorage.removeItem('pk_history');
         renderHistory();
         if (db) {
-            old.forEach(item => {
-                if (item.id) deleteDoc(doc(db, "scan_history", item.id)).catch(() => {});
+            old.forEach(function(item) {
+                if (item.id) db.collection('scan_history').doc(item.id).delete().catch(function() {});
             });
         }
-    };
+    }
 
-    window.exportHistoryCSV = function() {
+    function exportHistoryCSV() {
         let csv = '﻿SPZ;Stav;Majitel;Cas;Kontroloval
 ';
-        scanHistory.forEach(h => {
-            csv += h.plate + ';' + (h.allowed ? 'Povolene' : 'Nepovolene') + ';' + (h.owner || '') + ';' + h.time + ';' + (h.user || '') + '
+        scanHistory.forEach(function(h) {
+            csv += h.plate + ';' + (h.allowed ? 'POVOLENE' : 'NEPOVOLENE') + ';' + h.owner + ';' + h.time + ';' + h.user + '
 ';
         });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
         a.download = 'historia_parkovania.csv';
         a.click();
-    };
+    }
 
-    // Užívatelia
-    window.addUser = function() {
+    function addUser() {
         const u = document.getElementById('new-username').value.trim();
         const p = document.getElementById('new-userpass').value.trim();
         const r = document.getElementById('new-userrole').value;
-        if (!u || !p) return alert('Zadajte meno aj heslo.');
-        if (u === '_system_gemini_config') return alert('Rezervované meno.');
+        if (!u || !p || u === 'admin' || u === '_system_gemini_config') return;
 
-        const userObj = { username: u, password: p, role: r };
-        appUsers = appUsers.filter(x => x.username !== u);
-        appUsers.push(userObj);
-        localStorage.setItem('app_users', JSON.stringify(appUsers));
-        renderUsers();
         document.getElementById('new-username').value = '';
         document.getElementById('new-userpass').value = '';
-        if (db) {
-            setDoc(doc(db, "app_users", u), userObj).catch(() => {});
-        }
-    };
 
-    window.removeUser = function(uname) {
-        if (uname === 'admin') return alert('Hlavného admina nemožno zmazať.');
-        if (!confirm('Zmazať užívateľa ' + uname + '?')) return;
-        appUsers = appUsers.filter(x => x.username !== uname);
-        localStorage.setItem('app_users', JSON.stringify(appUsers));
+        const item = { username: u, password: p, role: r };
+        appUsers.push(item);
+        localStorage.setItem('pk_users', JSON.stringify(appUsers));
         renderUsers();
-        if (db) {
-            deleteDoc(doc(db, "app_users", uname)).catch(() => {});
-        }
-    };
 
-    window.changeOwnPassword = function() {
+        if (db) {
+            db.collection('app_users').add(item).catch(function() {});
+        }
+    }
+
+    function removeUser(id, username) {
+        if (!confirm('Zmazať účet ' + username + '?')) return;
+        appUsers = appUsers.filter(function(u) { return u.username !== username; });
+        localStorage.setItem('pk_users', JSON.stringify(appUsers));
+        renderUsers();
+
+        if (db && id) {
+            db.collection('app_users').doc(id).delete().catch(function() {});
+        }
+    }
+
+    function changeOwnPassword() {
         const np = document.getElementById('change-pass-input').value.trim();
         if (!np || !currentUser) return;
-        currentUser.password = np;
-        appUsers = appUsers.map(x => x.username === currentUser.username ? currentUser : x);
-        localStorage.setItem('app_users', JSON.stringify(appUsers));
-        document.getElementById('change-pass-input').value = '';
-        if (db) {
-            setDoc(doc(db, "app_users", currentUser.username), currentUser).catch(() => {});
+        if (currentUser.username === 'admin') {
+            alert('Heslo hlavného účtu admin je pevne dané v kóde.');
+            return;
         }
-        alert('Heslo bolo zmenené.');
-    };
+        const uObj = appUsers.find(function(u) { return u.username === currentUser.username; });
+        if (uObj) {
+            uObj.password = np;
+            localStorage.setItem('pk_users', JSON.stringify(appUsers));
+            if (db && uObj.id) {
+                db.collection('app_users').doc(uObj.id).update({ password: np }).catch(function() {});
+            }
+            alert('Heslo bolo zmenené.');
+        }
+        document.getElementById('change-pass-input').value = '';
+    }
 
     function renderUsers() {
-        const container = document.getElementById('users-list');
-        if (!container) return;
-        container.innerHTML = '';
-        appUsers.forEach(u => {
-            const row = document.createElement('div');
-            row.className = 'list-item';
-            const info = document.createElement('span');
-            info.textContent = u.username + ' (' + (u.role === 'A' ? 'Admin' : 'Užívateľ') + ')';
-            row.appendChild(info);
+        const el = document.getElementById('users-list');
+        if (!el) return;
+        el.innerHTML = appUsers.map(function(u) {
+            return '<div class="list-item">' +
+                '<div><strong>' + escapeHtml(u.username) + '</strong> <span class="badge-ver">' + escapeHtml(u.role) + '</span></div>' +
+                '<button class="btn btn-danger btn-sm" onclick="removeUser('' + (u.id || '') + '', '' + escapeHtml(u.username) + '')">🗑️</button>' +
+                '</div>';
+        }).join('');
+    }
 
-            if (u.username !== 'admin') {
-                const del = document.createElement('button');
-                del.className = 'btn btn-danger btn-sm';
-                del.textContent = '✕';
-                del.onclick = () => window.removeUser(u.username);
-                row.appendChild(del);
-            }
-            container.appendChild(row);
-        });
+    function switchTab(tabName) {
+        if (tabName !== 'scanner') {
+            stopCamera();
+        }
+        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); });
+        document.querySelectorAll('nav.bottom-nav button').forEach(function(el) { el.classList.remove('active'); });
+        document.getElementById('tab-' + tabName).classList.remove('hidden');
+        document.getElementById('nav-' + tabName).classList.add('active');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 </script>
 </body>
