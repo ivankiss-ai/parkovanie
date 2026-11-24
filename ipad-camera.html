@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skener EAN kódov</title>
+    <script src="https://unpkg.com"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { margin: 0; padding: 15px; background: #f8fafc; color: #0f172a; max-width: 600px; margin: 0 auto; }
+        h2 { margin-top: 0; text-align: center; color: #2563eb; }
+        #reader { width: 100%; min-height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+        .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .btn { flex: 1; padding: 13px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-stop { background: #dc2626; color: white; display: none; }
+        .btn-switch { background: #475569; color: white; display: none; }
+        .btn-outline { background: white; border: 1px solid #cbd5e1; color: #0f172a; width: 100%; margin-bottom: 12px; }
+        #status-msg { background: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 0.85rem; text-align: center; margin-bottom: 12px; }
+        #last-scan { display: none; background: #16a34a; color: white; padding: 14px; border-radius: 10px; text-align: center; margin-bottom: 12px; }
+        #last-code { font-size: 1.6rem; font-weight: 900; font-family: monospace; letter-spacing: 1px; }
+        .card { background: white; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .code-text { font-family: monospace; font-weight: bold; font-size: 1.05rem; }
+        .time-text { font-size: 0.8rem; color: #64748b; }
+    </style>
+</head>
+<body>
+
+    <h2>📦 Skener EAN / QR kódov</h2>
+
+    <div id="status-msg">Pripravené. Klikni na Zapnúť kameru.</div>
+
+    <div id="last-scan">
+        <div style="font-size: 0.85rem;">✅ NASNÍMANÝ KÓD</div>
+        <div id="last-code"></div>
+    </div>
+
+    <div id="reader"></div>
+
+    <div class="btn-row">
+        <button id="btn-start" class="btn btn-primary" onclick="startScanner()">🎥 Zapnúť kameru</button>
+        <button id="btn-switch" class="btn btn-switch" onclick="switchCamera()">🔄 Prepnúť</button>
+        <button id="btn-stop" class="btn btn-stop" onclick="stopScanner()">⏹️ Vypnúť</button>
+    </div>
+
+    <input type="file" id="file-input" accept="image/*" style="display:none" onchange="scanFromFile(this)">
+    <button class="btn btn-outline" onclick="document.getElementById('file-input').click()">🖼️ Načítať kód z fotky</button>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin: 14px 0 8px 0;">
+        <strong>História (<span id="count">0</span>)</strong>
+        <div>
+            <button onclick="exportCSV()" style="padding:5px 10px; border-radius:6px; border:1px solid #cbd5e1; background:white; cursor:pointer;">📥 CSV</button>
+            <button onclick="clearList()" style="padding:5px 10px; border-radius:6px; border:none; background:#fee2e2; color:#dc2626; cursor:pointer;">Zmazať</button>
+        </div>
+    </div>
+    <div id="history-list"></div>
+
+<script>
+    let html5QrCode = null;
+    let cameras = [];
+    let currentCamIdx = 0;
+    let lastCode = '';
+    let lastTime = 0;
+    let scannedItems = JSON.parse(localStorage.getItem('ean_history') || '[]');
+
+    renderHistory();
+
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, ctx.currentTime);
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        } catch (e) {}
+    }
+
+    function setStatus(txt, isErr) {
+        const el = document.getElementById('status-msg');
+        el.textContent = txt;
+        el.style.background = isErr ? '#fee2e2' : '#e2e8f0';
+        el.style.color = isErr ? '#dc2626' : '#0f172a';
+    }
+
+    function onScanSuccess(decodedText) {
+        const now = Date.now();
+        if (decodedText === lastCode && (now - lastTime) < 3000) return;
+        lastCode = decodedText;
+        lastTime = now;
+
+        beep();
+        if (navigator.vibrate) navigator.vibrate(100);
+
+        document.getElementById('last-scan').style.display = 'block';
+        document.getElementById('last-code').textContent = decodedText;
+
+        scannedItems.unshift({
+            code: decodedText,
+            time: new Date().toLocaleTimeString('sk-SK')
+        });
+        localStorage.setItem('ean_history', JSON.stringify(scannedItems));
+        renderHistory();
+    }
+
+    async function startScanner() {
+        if (location.protocol === 'file:') {
+            setStatus('⚠️ Súbor je otvorený lokálne! Pre kameru na iPade ho nahraj na GitHub (https://).', true);
+            return;
+        }
+        setStatus('Hľadám kamery v zariadení...');
+        try {
+            cameras = await Html5Qrcode.getCameras();
+            if (!cameras || cameras.length === 0) {
+                setStatus('V zariadení sa nenašla žiadna kamera.', true);
+                return;
+            }
+            const backIdx = cameras.findIndex(c => /back|rear|zadn|environment/i.test(c.label));
+            currentCamIdx = backIdx !== -1 ? backIdx : (cameras.length > 1 ? cameras.length - 1 : 0);
+            await runCameraById(cameras[currentCamIdx].id);
+        } catch (err) {
+            setStatus('Chyba kamery: ' + err, true);
+        }
+    }
+
+    async function runCameraById(camId) {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        } else if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+
+        try {
+            await html5QrCode.start(
+                camId,
+                { fps: 12, qrbox: { width: 260, height: 150 } },
+                onScanSuccess,
+                () => {}
+            );
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'block';
+            if (cameras.length > 1) {
+                document.getElementById('btn-switch').style.display = 'block';
+            }
+            setStatus('Kamera beží. Namier na čiarový kód.');
+        } catch (err) {
+            setStatus('Nepodarilo sa spustiť obraz: ' + err, true);
+        }
+    }
+
+    async function switchCamera() {
+        if (cameras.length < 2) return;
+        currentCamIdx = (currentCamIdx + 1) % cameras.length;
+        await runCameraById(cameras[currentCamIdx].id);
+    }
+
+    async function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+        document.getElementById('btn-start').style.display = 'block';
+        document.getElementById('btn-stop').style.display = 'none';
+        document.getElementById('btn-switch').style.display = 'none';
+        setStatus('Kamera je vypnutá.');
+    }
+
+    async function scanFromFile(input) {
+        if (!input.files || !input.files[0]) return;
+        if (html5QrCode && html5QrCode.isScanning) {
+            await stopScanner();
+        }
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        try {
+            const res = await html5QrCode.scanFile(input.files[0], true);
+            onScanSuccess(res);
+            setStatus('Kód z fotky bol úspešne prečítaný.');
+        } catch (e) {
+            setStatus('Na fotke sa nepodarilo nájsť čiarový kód.', true);
+        }
+        input.value = '';
+    }
+
+    function renderHistory() {
+        document.getElementById('count').textContent = scannedItems.length;
+        document.getElementById('history-list').innerHTML = scannedItems.map(item => `
+            <div class="card">
+                <span class="code-text">${item.code}</span>
+                <span class="time-text">${item.time}</span>
+            </div>
+        `).join('');
+    }
+
+    function clearList() {
+        if (!confirm('Zmazať históriu?')) return;
+        scannedItems = [];
+        localStorage.removeItem('ean_history');
+        renderHistory();
+    }
+
+    function exportCSV() {
+        let csv = '\uFEFFKod;Cas\n';
+        scannedItems.forEach(i => csv += `${i.code};${i.time}\n`);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = 'ean_kody.csv';
+        a.click();
+    }
+</script>
+</body>
+</html>
