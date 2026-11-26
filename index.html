@@ -66,10 +66,10 @@
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 18px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; }
+        #result-banner { display: none; padding: 9px 12px; border-radius: 10px; color: white; text-align: center; margin-bottom: 8px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
-        #result-plate { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 5px 0; word-break: break-all; }
+        #result-plate { font-size: 1.45rem; font-weight: 900; letter-spacing: 1.5px; margin: 2px 0; word-break: break-all; }
 
         #crop-preview-box { display: none; text-align: center; margin-bottom: 10px; }
         #crop-preview { max-height: 54px; border-radius: 6px; border: 2px solid #cbd5e1; }
@@ -97,14 +97,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.48</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.49</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.48</span>
+        <span class="version-tag">v1.49</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -114,9 +114,9 @@
 
 <div id="tab-scan" class="tab active">
     <div id="result-banner">
-        <div id="result-status" style="font-weight: bold; font-size: 1.1rem;"></div>
+        <div id="result-status" style="font-weight: bold; font-size: 0.9rem;"></div>
         <div id="result-plate"></div>
-        <div id="result-owner" style="font-size: 0.95rem;"></div>
+        <div id="result-owner" style="font-size: 0.85rem;"></div>
     </div>
 
     <div class="camera-box" id="camera-box">
