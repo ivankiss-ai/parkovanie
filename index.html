@@ -97,14 +97,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.49</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.50</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.49</span>
+        <span class="version-tag">v1.50</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -960,13 +960,14 @@
 
                     var prData = await prResponse.json().catch(function() { return null; });
                     if (!prResponse.ok) {
-                        lastError = (prData && (prData.detail || prData.error)) || ('Plate Recognizer HTTP ' + prResponse.status);
+                        var prMsg = (prData && (prData.detail || prData.error)) || prResponse.statusText || 'Neznáma chyba';
+                        lastError = 'Chyba ' + prResponse.status + ' (Plate Recognizer): ' + prMsg;
                     } else if (prData && Array.isArray(prData.results)) {
                         rawResult = prData.results.length > 0 ? (prData.results[0].plate || '') : 'NONE';
                         usedModel = 'Plate Recognizer';
                         success = true;
                     } else {
-                        lastError = 'Neplatná odpoveď z Plate Recognizer API.';
+                        lastError = 'Chyba ' + prResponse.status + ' (Plate Recognizer): Neplatná odpoveď zo servera.';
                     }
                 } catch (prErr) {
                     if (scanCancelledByStop || !stream) {
@@ -979,7 +980,7 @@
                     clearTimeout(prTimeoutId);
                 }
             } else {
-                var modelName = selectedAiModule === 'lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
+                var modelName = selectedAiModule === 'lite' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash';
                 var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
 
                 var gemController = new AbortController();
@@ -1002,17 +1003,15 @@
                             }],
                             generationConfig: {
                                 temperature: 0.0,
-                                maxOutputTokens: 20,
-                                thinkingConfig: {
-                                    thinkingBudget: 0
-                                }
+                                maxOutputTokens: 50
                             }
                         })
                     });
 
-                    var data = await response.json();
-                    if (!response.ok || data.error) {
-                        lastError = (data.error && data.error.message) || ('Gemini HTTP ' + response.status);
+                    var data = await response.json().catch(function() { return null; });
+                    if (!response.ok || !data || data.error) {
+                        var gemMsg = (data && data.error && data.error.message) || response.statusText || 'Neznáma chyba';
+                        lastError = 'Chyba ' + response.status + ' (' + modelName + '): ' + gemMsg;
                     } else {
                         var candidate = data.candidates ? data.candidates.at(0) : null;
                         var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
@@ -1061,11 +1060,12 @@
                 }
             }
         } catch (e) {
+            var errMsg = (e && e.message) ? e.message : 'Neznáma chyba';
             if (moduleInfoEl) {
-                moduleInfoEl.textContent = 'Chyba: ' + e.message;
+                moduleInfoEl.textContent = errMsg.indexOf('Chyba ') === 0 ? errMsg : ('Chyba: ' + errMsg);
             }
             if (!isFromAuto && stream && !scanCancelledByStop) {
-                alert('Chyba pri čítaní: ' + e.message);
+                alert(errMsg.indexOf('Chyba ') === 0 ? errMsg : ('Chyba pri čítaní: ' + errMsg));
             }
         } finally {
             activeAbortController = null;
