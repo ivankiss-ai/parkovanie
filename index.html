@@ -98,14 +98,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.46</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.47</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.46</span>
+        <span class="version-tag">v1.47</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -137,6 +137,12 @@
     <div class="mode-switch">
         <button id="scan-manual" class="active" onclick="setAutoMode(false)">👆 Manuálne (tlačidlom)</button>
         <button id="scan-auto" onclick="setAutoMode(true)">🚶 Auto-sken pri chôdzi</button>
+    </div>
+
+    <div class="mode-switch">
+        <button id="ai-plate" class="active" onclick="setAiModule('plate')">🎯 Plate</button>
+        <button id="ai-lite" onclick="setAiModule('lite')">⚡ Lite</button>
+        <button id="ai-flash" onclick="setAiModule('flash')">🧠 Flash</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate(false)">📸 Odfotiť a overiť ŠPZ</button>
@@ -260,6 +266,7 @@
     let prApiToken = localStorage.getItem('park_pr_token_cache') || '';
     let currentUser = null;
     let isTallFrame = false;
+    let selectedAiModule = 'plate';
 
     let isAutoMode = false;
     let autoTimer = null;
@@ -735,6 +742,13 @@
         }
     }
 
+    function setAiModule(mod) {
+        selectedAiModule = mod;
+        document.getElementById('ai-plate').classList.toggle('active', mod === 'plate');
+        document.getElementById('ai-lite').classList.toggle('active', mod === 'lite');
+        document.getElementById('ai-flash').classList.toggle('active', mod === 'flash');
+    }
+
     function switchTab(tabName, btn) {
         if (tabName !== 'scan' && stream) {
             stopCamera();
@@ -838,9 +852,16 @@
         }
         if (!video.videoWidth || !video.videoHeight) return;
 
-        if (!prApiToken && !geminiApiKey) {
-            if (!isFromAuto) alert('Chýba API kľúč (Plate Recognizer alebo Gemini)! Admin ho musí nastaviť v záložke Užívatelia.');
-            return;
+        if (selectedAiModule === 'plate') {
+            if (!prApiToken) {
+                if (!isFromAuto) alert('Chýba Plate Recognizer API Token! Admin ho musí nastaviť v záložke Užívatelia.');
+                return;
+            }
+        } else {
+            if (!geminiApiKey) {
+                if (!isFromAuto) alert('Chýba Gemini API kľúč! Admin ho musí nastaviť v záložke Užívatelia.');
+                return;
+            }
         }
         if (!navigator.onLine) {
             if (!isFromAuto) alert('Na čítanie značiek cez AI je potrebné internetové pripojenie. Zadaj ŠPZ ručne.');
@@ -915,8 +936,7 @@
         var usedModel = '';
 
         try {
-            // 1. Primárny skener: Plate Recognizer API
-            if (prApiToken) {
+            if (selectedAiModule === 'plate') {
                 var prController = new AbortController();
                 activeAbortController = prController;
                 var prTimeoutId = setTimeout(function() {
@@ -956,78 +976,63 @@
                 } finally {
                     clearTimeout(prTimeoutId);
                 }
-            }
-
-            // 2. Záloha: Google Gemini (ak Plate Recognizer zlyhá alebo token nie je zadaný)
-            if (!success && !scanCancelledByStop) {
-                if (!geminiApiKey) {
-                    throw new Error(lastError || 'Plate Recognizer zlyhal a Gemini API kľúč nie je nastavený.');
-                }
-
-                var models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+            } else {
+                var modelName = selectedAiModule === 'lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
                 var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
 
-                for (var i = 0; i < models.length; i++) {
-                    if (scanCancelledByStop || !stream) break;
-                    var modelName = models.at(i);
-                    var gemController = new AbortController();
-                    activeAbortController = gemController;
-                    var gemTimeoutId = setTimeout(function() {
-                        gemController.abort();
-                    }, 8000);
+                var gemController = new AbortController();
+                activeAbortController = gemController;
+                var gemTimeoutId = setTimeout(function() {
+                    gemController.abort();
+                }, 8000);
 
-                    try {
-                        var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            signal: gemController.signal,
-                            body: JSON.stringify({
-                                contents: [{
-                                    parts: [
-                                        { text: promptText },
-                                        { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-                                    ]
-                                }],
-                                generationConfig: {
-                                    temperature: 0.0,
-                                    maxOutputTokens: 20,
-                                    thinkingConfig: {
-                                        thinkingBudget: 0
-                                    }
+                try {
+                    var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: gemController.signal,
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: promptText },
+                                    { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+                                ]
+                            }],
+                            generationConfig: {
+                                temperature: 0.0,
+                                maxOutputTokens: 20,
+                                thinkingConfig: {
+                                    thinkingBudget: 0
                                 }
-                            })
-                        });
+                            }
+                        })
+                    });
 
-                        var data = await response.json();
-                        if (!response.ok || data.error) {
-                            lastError = (data.error && data.error.message) || ('Gemini HTTP ' + response.status);
-                            continue;
-                        }
-
+                    var data = await response.json();
+                    if (!response.ok || data.error) {
+                        lastError = (data.error && data.error.message) || ('Gemini HTTP ' + response.status);
+                    } else {
                         var candidate = data.candidates ? data.candidates.at(0) : null;
                         var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
                         rawResult = part ? (part.text || '') : '';
                         usedModel = modelName;
                         success = true;
-                        break;
-                    } catch (err) {
-                        if (scanCancelledByStop || !stream) {
-                            lastError = 'Skenovanie bolo prerušené.';
-                            break;
-                        }
-                        if (err.name === 'AbortError') {
-                            lastError = 'Časový limit vypršal (slabý signál).';
-                            continue;
-                        }
-                        lastError = err.message;
-                    } finally {
-                        clearTimeout(gemTimeoutId);
                     }
+                } catch (err) {
+                    if (scanCancelledByStop || !stream) {
+                        lastError = 'Skenovanie bolo prerušené.';
+                    } else if (err.name === 'AbortError') {
+                        lastError = 'Časový limit vypršal (slabý signál).';
+                    } else {
+                        lastError = err.message;
+                    }
+                } finally {
+                    clearTimeout(gemTimeoutId);
                 }
             }
 
             if (!success) {
-                throw new Error(lastError || 'Všetky AI modely sú momentálne nedostupné.');
+                throw new Error(lastError || 'Vybraný AI model je momentálne nedostupný.');
             }
 
             incrementDailyCount(usedModel);
