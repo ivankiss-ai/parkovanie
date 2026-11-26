@@ -47,7 +47,7 @@
         .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
         .scan-frame.tall { height: 136px; }
         .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
-        .quota-badge { position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(0,0,0,0.65); color: #e2e8f0; padding: 4px 9px; border-radius: 8px; font-size: 0.74rem; pointer-events: none; }
+        .quota-badge { position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(0,0,0,0.68); color: #e2e8f0; padding: 4px 9px; border-radius: 8px; font-size: 0.72rem; pointer-events: none; }
         #cam-stop-btn { display: none; position: absolute; top: 10px; right: 10px; z-index: 6; background: rgba(220, 38, 38, 0.92); color: white; border: none; padding: 6px 11px; border-radius: 8px; font-size: 0.78rem; font-weight: bold; cursor: pointer; }
         #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
 
@@ -74,6 +74,7 @@
 
         #crop-preview-box { display: none; text-align: center; margin-bottom: 10px; }
         #crop-preview { max-height: 54px; border-radius: 6px; border: 2px solid #cbd5e1; }
+        #scan-module-info { font-size: 0.78rem; color: #475569; margin-top: 4px; font-weight: 600; }
 
         .card { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .card-info { min-width: 0; flex: 1; overflow-wrap: break-word; }
@@ -97,14 +98,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.42</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.46</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.42</span>
+        <span class="version-tag">v1.46</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -120,7 +121,7 @@
     </div>
 
     <div class="camera-box" id="camera-box">
-        <div class="quota-badge" id="quota-badge">Dnes (lite / flash): 0/0</div>
+        <div class="quota-badge" id="quota-badge">Dnes: PlateRec 0 | lite 0 | flash 0</div>
         <button id="cam-stop-btn" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
@@ -143,6 +144,7 @@
     <div id="crop-preview-box">
         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 3px;">Odfotený výrez pre AI:</div>
         <img id="crop-preview" alt="Výrez ŠPZ">
+        <div id="scan-module-info"></div>
     </div>
 
     <div style="text-align: center; color: #64748b; font-size: 0.85rem; margin: 10px 0;">— alebo zadaj ručne (napr. pri špinavej značke) —</div>
@@ -203,11 +205,13 @@
 
 <div id="tab-users" class="tab">
     <div class="section-box">
-        <h3 style="margin-top:0;">🤖 Nastavenie AI skenera (Gemini API)</h3>
-        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Kľúč sa bezpečne uloží do databázy Firebase aj do pamäte mobilu.</p>
+        <h3 style="margin-top:0;">🤖 Nastavenie AI skenera (Plate Recognizer &amp; Gemini)</h3>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0;">Kľúče sa bezpečne uložia do databázy Firebase aj do pamäte mobilu.</p>
+        <input type="password" id="pr-key-input" placeholder="Vložte Plate Recognizer API Token">
+        <div id="pr-key-status" style="font-size: 0.82rem; font-weight: 600; color: #dc2626; margin-bottom: 10px;">🔴 Plate Recognizer token nie je nastavený</div>
         <input type="password" id="gemini-key-input" placeholder="Vložte Gemini API kľúč (začína na AIzaSy...)">
-        <button class="btn btn-success" style="margin-bottom:6px;" onclick="saveGeminiKey()">💾 Uložiť API kľúč do cloudu</button>
-        <div id="gemini-key-status" style="font-size: 0.82rem; font-weight: 600; color: #dc2626;">🔴 API kľúč nie je nastavený</div>
+        <div id="gemini-key-status" style="font-size: 0.82rem; font-weight: 600; color: #dc2626; margin-bottom: 10px;">🔴 Gemini API kľúč nie je nastavený</div>
+        <button class="btn btn-success" style="margin-bottom:4px;" onclick="saveApiKeys()">💾 Uložiť API kľúče do cloudu</button>
     </div>
 
     <div class="section-box">
@@ -253,6 +257,7 @@
     let scanHistory = JSON.parse(localStorage.getItem('park_hist_cache') || '[]');
     let appUsers = JSON.parse(localStorage.getItem('park_users_cache') || '[]');
     let geminiApiKey = localStorage.getItem('park_gemini_key_cache') || '';
+    let prApiToken = localStorage.getItem('park_pr_token_cache') || '';
     let currentUser = null;
     let isTallFrame = false;
 
@@ -260,6 +265,7 @@
     let autoTimer = null;
     let isScanningNow = false;
     let activeAbortController = null;
+    let scanCancelledByStop = false;
     let lastFrameSignature = null;
     let lastAutoPlate = '';
     let lastAutoTime = 0;
@@ -276,7 +282,11 @@
     });
 
     function getTodayKey() {
-        return new Date().toISOString().slice(0, 10);
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
     }
 
     function getDailyCounts() {
@@ -284,19 +294,25 @@
         var savedDate = localStorage.getItem('park_ai_date');
         if (savedDate !== today) {
             localStorage.setItem('park_ai_date', today);
-            localStorage.setItem('park_ai_flash', '0');
+            localStorage.setItem('park_ai_platerec', '0');
             localStorage.setItem('park_ai_lite', '0');
-            return { flash: 0, lite: 0 };
+            localStorage.setItem('park_ai_flash', '0');
+            return { platerec: 0, lite: 0, flash: 0 };
         }
         return {
-            flash: parseInt(localStorage.getItem('park_ai_flash') || '0', 10),
-            lite: parseInt(localStorage.getItem('park_ai_lite') || '0', 10)
+            platerec: parseInt(localStorage.getItem('park_ai_platerec') || '0', 10),
+            lite: parseInt(localStorage.getItem('park_ai_lite') || '0', 10),
+            flash: parseInt(localStorage.getItem('park_ai_flash') || '0', 10)
         };
     }
 
     function incrementDailyCount(modelName) {
         var counts = getDailyCounts();
-        if (String(modelName).indexOf('lite') !== -1) {
+        var lower = String(modelName).toLowerCase();
+        if (lower.indexOf('plate') !== -1) {
+            counts.platerec += 1;
+            localStorage.setItem('park_ai_platerec', String(counts.platerec));
+        } else if (lower.indexOf('lite') !== -1) {
             counts.lite += 1;
             localStorage.setItem('park_ai_lite', String(counts.lite));
         } else {
@@ -309,10 +325,11 @@
     function updateQuotaBadge() {
         var counts = getDailyCounts();
         var el = document.getElementById('quota-badge');
-        if (el) el.textContent = 'Dnes (lite / flash): ' + counts.lite + '/' + counts.flash;
+        if (el) el.textContent = 'Dnes: PlateRec ' + counts.platerec + ' | lite ' + counts.lite + ' | flash ' + counts.flash;
     }
 
     updateQuotaBadge();
+    setInterval(updateQuotaBadge, 60000);
 
     function playBeep(isOk) {
         try {
@@ -342,18 +359,45 @@
         return String(str || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
 
-    function updateGeminiKeyUI() {
+    function updateApiKeyUI() {
+        var prStatusEl = document.getElementById('pr-key-status');
+        var prInputEl = document.getElementById('pr-key-input');
+        if (prStatusEl) {
+            if (prApiToken && prApiToken.length >= 10) {
+                prStatusEl.textContent = '🟢 Plate Recognizer token je uložený a aktívny';
+                prStatusEl.style.color = '#16a34a';
+                if (prInputEl && !prInputEl.value) prInputEl.value = prApiToken;
+            } else {
+                prStatusEl.textContent = '🔴 Plate Recognizer token nie je nastavený';
+                prStatusEl.style.color = '#dc2626';
+            }
+        }
+
         var statusEl = document.getElementById('gemini-key-status');
         var inputEl = document.getElementById('gemini-key-input');
-        if (!statusEl) return;
-        if (geminiApiKey && geminiApiKey.length > 10) {
-            statusEl.textContent = '🟢 API kľúč je uložený a aktívny';
-            statusEl.style.color = '#16a34a';
-            if (inputEl && !inputEl.value) inputEl.value = geminiApiKey;
-        } else {
-            statusEl.textContent = '🔴 API kľúč nie je nastavený';
-            statusEl.style.color = '#dc2626';
+        if (statusEl) {
+            if (geminiApiKey && geminiApiKey.length > 10) {
+                statusEl.textContent = '🟢 Gemini API kľúč je uložený a aktívny';
+                statusEl.style.color = '#16a34a';
+                if (inputEl && !inputEl.value) inputEl.value = geminiApiKey;
+            } else {
+                statusEl.textContent = '🔴 Gemini API kľúč nie je nastavený';
+                statusEl.style.color = '#dc2626';
+            }
         }
+    }
+
+    function applyCloudConfig(cfg) {
+        if (!cfg) return;
+        if (Object.prototype.hasOwnProperty.call(cfg, 'apiKey')) {
+            geminiApiKey = cfg.apiKey || '';
+            localStorage.setItem('park_gemini_key_cache', geminiApiKey);
+        }
+        if (Object.prototype.hasOwnProperty.call(cfg, 'prToken')) {
+            prApiToken = cfg.prToken || '';
+            localStorage.setItem('park_pr_token_cache', prApiToken);
+        }
+        updateApiKeyUI();
     }
 
     function updateConnectionBadge() {
@@ -379,12 +423,7 @@
             var list = [];
             snapshot.docs.forEach(function(doc) {
                 if (doc.id === CONFIG_DOC_ID) {
-                    var cfg = doc.data();
-                    if (cfg && cfg.apiKey) {
-                        geminiApiKey = cfg.apiKey;
-                        localStorage.setItem('park_gemini_key_cache', geminiApiKey);
-                        updateGeminiKeyUI();
-                    }
+                    applyCloudConfig(doc.data());
                 } else {
                     var d = doc.data();
                     d.id = doc.id;
@@ -425,7 +464,7 @@
         updateConnectionBadge();
     }
 
-    updateGeminiKeyUI();
+    updateApiKeyUI();
     renderDB();
     renderHistory();
     renderUsers();
@@ -469,12 +508,7 @@
                 var fetched = [];
                 snap.docs.forEach(function(doc) {
                     if (doc.id === CONFIG_DOC_ID) {
-                        var cfg = doc.data();
-                        if (cfg && cfg.apiKey) {
-                            geminiApiKey = cfg.apiKey;
-                            localStorage.setItem('park_gemini_key_cache', geminiApiKey);
-                            updateGeminiKeyUI();
-                        }
+                        applyCloudConfig(doc.data());
                     } else {
                         var d = doc.data();
                         d.id = doc.id;
@@ -519,7 +553,7 @@
         });
         var clearHistBtn = document.getElementById('btn-clear-history');
         if (clearHistBtn) clearHistBtn.style.display = isAdmin ? 'inline-block' : 'none';
-        updateGeminiKeyUI();
+        updateApiKeyUI();
         renderDB();
         renderUsers();
     }
@@ -535,22 +569,37 @@
         switchTab('scan', document.querySelector('nav button'));
     }
 
-    async function saveGeminiKey() {
+    async function saveApiKeys() {
         if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
-        var val = document.getElementById('gemini-key-input').value.trim();
-        if (val.length < 15) return alert('Zadaj platný Gemini API kľúč.');
-        geminiApiKey = val;
-        localStorage.setItem('park_gemini_key_cache', val);
-        updateGeminiKeyUI();
+        var prVal = document.getElementById('pr-key-input').value.trim();
+        var geminiVal = document.getElementById('gemini-key-input').value.trim();
+
+        if (!prVal && !geminiVal) {
+            return alert('Zadaj aspoň jeden platný API kľúč / token.');
+        }
+        if (prVal && prVal.length < 10) {
+            return alert('Zadaj platný Plate Recognizer API Token.');
+        }
+        if (geminiVal && geminiVal.length < 15) {
+            return alert('Zadaj platný Gemini API kľúč.');
+        }
+
+        prApiToken = prVal;
+        geminiApiKey = geminiVal;
+        localStorage.setItem('park_pr_token_cache', prApiToken);
+        localStorage.setItem('park_gemini_key_cache', geminiApiKey);
+        updateApiKeyUI();
+
         if (db) {
             try {
                 await db.collection('app_users').doc(CONFIG_DOC_ID).set({
-                    apiKey: val,
+                    prToken: prApiToken,
+                    apiKey: geminiApiKey,
                     updatedAt: new Date().toISOString()
                 });
-                alert('API kľúč bol úspešne uložený do cloudu aj pamäte mobilu.');
+                alert('API kľúče boli úspešne uložené do cloudu aj pamäte mobilu.');
             } catch (e) {
-                alert('Kľúč bol uložený v tomto mobile, ale zápis do cloudu zlyhal.');
+                alert('Kľúče boli uložené v tomto mobile, ale zápis do cloudu zlyhal.');
             }
         }
     }
@@ -671,7 +720,7 @@
                 if (isAutoMode && stream && !isScanningNow) {
                     scanPlate(true);
                 }
-            }, 3500);
+            }, 4500);
         } else {
             if (autoTimer) {
                 clearInterval(autoTimer);
@@ -720,6 +769,7 @@
     }
 
     function stopCamera() {
+        scanCancelledByStop = true;
         if (isAutoMode) {
             setAutoMode(false);
         }
@@ -766,47 +816,17 @@
         return avgDiff > 14;
     }
 
-    async function callGeminiModel(modelName, promptText, base64Image) {
-        var controller = new AbortController();
-        activeAbortController = controller;
-        var timeoutId = setTimeout(function() {
-            controller.abort();
-        }, 12000);
-
-        try {
-            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: controller.signal,
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: promptText },
-                            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-                        ]
-                    }],
-                    generationConfig: {
-                        temperature: 0.0,
-                        maxOutputTokens: 20,
-                        thinkingConfig: { thinkingBudget: 0 }
-                    }
-                })
-            });
-
-            var data = await response.json();
-            if (!response.ok || data.error) {
-                throw new Error((data.error && data.error.message) ? data.error.message : ('HTTP ' + response.status));
-            }
-
-            var candidate = data.candidates ? data.candidates.at(0) : null;
-            var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
-            return part ? (part.text || '') : '';
-        } finally {
-            clearTimeout(timeoutId);
-            if (activeAbortController === controller) {
-                activeAbortController = null;
-            }
+    function dataUrlToBlob(dataUrl) {
+        var parts = dataUrl.split(',');
+        var mimeMatch = parts[0].match(/:(.*?);/);
+        var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        var bstr = atob(parts[1]);
+        var n = bstr.length;
+        var u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
         }
+        return new Blob([u8arr], { type: mime });
     }
 
     async function scanPlate(isFromAuto) {
@@ -818,8 +838,8 @@
         }
         if (!video.videoWidth || !video.videoHeight) return;
 
-        if (!geminiApiKey) {
-            if (!isFromAuto) alert('Chýba Gemini API kľúč! Admin ho musí nastaviť v záložke Užívatelia.');
+        if (!prApiToken && !geminiApiKey) {
+            if (!isFromAuto) alert('Chýba API kľúč (Plate Recognizer alebo Gemini)! Admin ho musí nastaviť v záložke Užívatelia.');
             return;
         }
         if (!navigator.onLine) {
@@ -843,14 +863,16 @@
         var cropX = offX + (visW - frameW) / 2;
         var cropY = offY + (visH - frameH) / 2;
 
-        var targetW = Math.min(520, Math.max(160, Math.round(frameW)));
-        var targetH = Math.max(50, Math.round(targetW * (frameH / frameW)));
+        var rawW = Math.max(100, Math.round(frameW));
+        var rawH = Math.max(40, Math.round(frameH));
+        var targetW = rawW > 540 ? 540 : rawW;
+        var targetH = Math.max(40, Math.round(rawH * (targetW / rawW)));
 
         var canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, targetW, targetH);
+        ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, canvas.width, canvas.height);
 
         var currentSig = getFrameSignature(ctx, canvas.width, canvas.height);
         if (isFromAuto) {
@@ -863,6 +885,7 @@
         }
 
         isScanningNow = true;
+        scanCancelledByStop = false;
         var btn = document.getElementById('btn-scan');
         if (!isFromAuto) {
             btn.disabled = true;
@@ -871,43 +894,140 @@
             btn.textContent = '⏳ Auto-sken číta ŠPZ...';
         }
 
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
         var previewImg = document.getElementById('crop-preview');
         var previewBox = document.getElementById('crop-preview-box');
+        var moduleInfoEl = document.getElementById('scan-module-info');
         if (previewImg && previewBox) {
             previewImg.src = dataUrl;
             previewBox.style.display = 'block';
         }
+        if (moduleInfoEl) {
+            moduleInfoEl.textContent = 'Rozpoznávam ŠPZ...';
+        }
+
+        var imageBlob = dataUrlToBlob(dataUrl);
         var base64Image = dataUrl.split(',').at(1);
 
-        var models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
         var rawResult = '';
         var lastError = '';
         var success = false;
         var usedModel = '';
 
-        var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
-
         try {
-            for (var i = 0; i < models.length; i++) {
-                if (!stream && !isFromAuto) break;
-                var modelName = models.at(i);
+            // 1. Primárny skener: Plate Recognizer API
+            if (prApiToken) {
+                var prController = new AbortController();
+                activeAbortController = prController;
+                var prTimeoutId = setTimeout(function() {
+                    prController.abort();
+                }, 8000);
+
                 try {
-                    rawResult = await callGeminiModel(modelName, promptText, base64Image);
-                    usedModel = modelName;
-                    success = true;
-                    break;
-                } catch (err) {
-                    if (err.name === 'AbortError') {
-                        lastError = 'Časový limit pripojenia vypršal (slabý signál).';
+                    var formData = new FormData();
+                    formData.append('upload', imageBlob, 'plate.jpg');
+
+                    var prResponse = await fetch('https://api.platerecognizer.com/v1/plate-reader/', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Token ' + prApiToken
+                        },
+                        body: formData,
+                        signal: prController.signal
+                    });
+
+                    var prData = await prResponse.json().catch(function() { return null; });
+                    if (!prResponse.ok) {
+                        lastError = (prData && (prData.detail || prData.error)) || ('Plate Recognizer HTTP ' + prResponse.status);
+                    } else if (prData && Array.isArray(prData.results)) {
+                        rawResult = prData.results.length > 0 ? (prData.results[0].plate || '') : 'NONE';
+                        usedModel = 'Plate Recognizer';
+                        success = true;
                     } else {
+                        lastError = 'Neplatná odpoveď z Plate Recognizer API.';
+                    }
+                } catch (prErr) {
+                    if (scanCancelledByStop || !stream) {
+                        throw new Error('Skenovanie bolo prerušené.');
+                    }
+                    lastError = prErr.name === 'AbortError'
+                        ? 'Plate Recognizer: časový limit vypršal.'
+                        : ('Plate Recognizer: ' + prErr.message);
+                } finally {
+                    clearTimeout(prTimeoutId);
+                }
+            }
+
+            // 2. Záloha: Google Gemini (ak Plate Recognizer zlyhá alebo token nie je zadaný)
+            if (!success && !scanCancelledByStop) {
+                if (!geminiApiKey) {
+                    throw new Error(lastError || 'Plate Recognizer zlyhal a Gemini API kľúč nie je nastavený.');
+                }
+
+                var models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+                var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
+
+                for (var i = 0; i < models.length; i++) {
+                    if (scanCancelledByStop || !stream) break;
+                    var modelName = models.at(i);
+                    var gemController = new AbortController();
+                    activeAbortController = gemController;
+                    var gemTimeoutId = setTimeout(function() {
+                        gemController.abort();
+                    }, 8000);
+
+                    try {
+                        var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            signal: gemController.signal,
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [
+                                        { text: promptText },
+                                        { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+                                    ]
+                                }],
+                                generationConfig: {
+                                    temperature: 0.0,
+                                    maxOutputTokens: 20,
+                                    thinkingConfig: {
+                                        thinkingBudget: 0
+                                    }
+                                }
+                            })
+                        });
+
+                        var data = await response.json();
+                        if (!response.ok || data.error) {
+                            lastError = (data.error && data.error.message) || ('Gemini HTTP ' + response.status);
+                            continue;
+                        }
+
+                        var candidate = data.candidates ? data.candidates.at(0) : null;
+                        var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
+                        rawResult = part ? (part.text || '') : '';
+                        usedModel = modelName;
+                        success = true;
+                        break;
+                    } catch (err) {
+                        if (scanCancelledByStop || !stream) {
+                            lastError = 'Skenovanie bolo prerušené.';
+                            break;
+                        }
+                        if (err.name === 'AbortError') {
+                            lastError = 'Časový limit vypršal (slabý signál).';
+                            continue;
+                        }
                         lastError = err.message;
+                    } finally {
+                        clearTimeout(gemTimeoutId);
                     }
                 }
             }
 
             if (!success) {
-                throw new Error(lastError || 'AI modely sú momentálne nedostupné.');
+                throw new Error(lastError || 'Všetky AI modely sú momentálne nedostupné.');
             }
 
             incrementDailyCount(usedModel);
@@ -915,6 +1035,9 @@
             var plate = smartMatchPlate(cleanPlate);
 
             if (plate && plate !== 'NONE' && plate.length >= 3 && plate.length <= 10) {
+                if (moduleInfoEl) {
+                    moduleInfoEl.textContent = 'Prečítané cez: ' + usedModel;
+                }
                 var now = Date.now();
                 var skipLog = isFromAuto && (plate === lastAutoPlate) && (now - lastAutoTime < 20000);
                 if (isFromAuto) {
@@ -923,15 +1046,22 @@
                 }
                 verifyAndLog(plate, skipLog);
             } else {
+                if (moduleInfoEl) {
+                    moduleInfoEl.textContent = 'Skontrolované cez: ' + usedModel + ' (ŠPZ nerozpoznaná)';
+                }
                 if (!isFromAuto) {
                     alert('ŠPZ sa nepodarilo prečítať. Skús priblížiť kameru alebo zadaj značku ručne.');
                 }
             }
         } catch (e) {
-            if (!isFromAuto && stream) {
+            if (moduleInfoEl) {
+                moduleInfoEl.textContent = 'Chyba: ' + e.message;
+            }
+            if (!isFromAuto && stream && !scanCancelledByStop) {
                 alert('Chyba pri čítaní: ' + e.message);
             }
         } finally {
+            activeAbortController = null;
             isScanningNow = false;
             if (!isAutoMode) {
                 btn.disabled = false;
