@@ -97,14 +97,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.51</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.52</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.51</span>
+        <span class="version-tag">v1.52</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -983,11 +983,15 @@
                 var modelName = selectedAiModule === 'lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
                 var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
 
+                var gemConfig = selectedAiModule === 'lite'
+                    ? { temperature: 0.0, maxOutputTokens: 50 }
+                    : { temperature: 0.0, maxOutputTokens: 100, thinkingConfig: { thinkingBudget: 0 } };
+
                 var gemController = new AbortController();
                 activeAbortController = gemController;
                 var gemTimeoutId = setTimeout(function() {
                     gemController.abort();
-                }, 8000);
+                }, 5000);
 
                 try {
                     var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
@@ -1001,10 +1005,7 @@
                                     { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
                                 ]
                             }],
-                            generationConfig: {
-                                temperature: 0.0,
-                                maxOutputTokens: 50
-                            }
+                            generationConfig: gemConfig
                         })
                     });
 
@@ -1250,12 +1251,19 @@
         var p = prompt('Zadaj heslo Admina:');
         if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
-        var batch = db.batch();
-        scanHistory.forEach(function(h) {
-            batch.delete(db.collection('scan_history').doc(h.id));
-        });
-        await batch.commit();
+        if (db) {
+            var snap = await db.collection('scan_history').get();
+            for (var i = 0; i < snap.docs.length; i += 400) {
+                var batch = db.batch();
+                snap.docs.slice(i, i + 400).forEach(function(doc) {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+            }
+        }
+        scanHistory = [];
         localStorage.removeItem('park_hist_cache');
+        renderHistory();
     }
 
     function exportCSV() {
