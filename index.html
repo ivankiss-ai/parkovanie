@@ -97,14 +97,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.41</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.42</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.41</span>
+        <span class="version-tag">v1.42</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -120,7 +120,7 @@
     </div>
 
     <div class="camera-box" id="camera-box">
-        <div class="quota-badge" id="quota-badge">Dnes (flash / flash lite): 0/0</div>
+        <div class="quota-badge" id="quota-badge">Dnes (lite / flash): 0/0</div>
         <button id="cam-stop-btn" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
@@ -309,7 +309,7 @@
     function updateQuotaBadge() {
         var counts = getDailyCounts();
         var el = document.getElementById('quota-badge');
-        if (el) el.textContent = 'Dnes (flash / flash lite): ' + counts.flash + '/' + counts.lite;
+        if (el) el.textContent = 'Dnes (lite / flash): ' + counts.lite + '/' + counts.flash;
     }
 
     updateQuotaBadge();
@@ -671,7 +671,7 @@
                 if (isAutoMode && stream && !isScanningNow) {
                     scanPlate(true);
                 }
-            }, 4500);
+            }, 3500);
         } else {
             if (autoTimer) {
                 clearInterval(autoTimer);
@@ -766,6 +766,49 @@
         return avgDiff > 14;
     }
 
+    async function callGeminiModel(modelName, promptText, base64Image) {
+        var controller = new AbortController();
+        activeAbortController = controller;
+        var timeoutId = setTimeout(function() {
+            controller.abort();
+        }, 12000);
+
+        try {
+            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+                        ]
+                    }],
+                    generationConfig: {
+                        temperature: 0.0,
+                        maxOutputTokens: 20,
+                        thinkingConfig: { thinkingBudget: 0 }
+                    }
+                })
+            });
+
+            var data = await response.json();
+            if (!response.ok || data.error) {
+                throw new Error((data.error && data.error.message) ? data.error.message : ('HTTP ' + response.status));
+            }
+
+            var candidate = data.candidates ? data.candidates.at(0) : null;
+            var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
+            return part ? (part.text || '') : '';
+        } finally {
+            clearTimeout(timeoutId);
+            if (activeAbortController === controller) {
+                activeAbortController = null;
+            }
+        }
+    }
+
     async function scanPlate(isFromAuto) {
         if (isScanningNow) return;
         var video = document.getElementById('video');
@@ -800,11 +843,14 @@
         var cropX = offX + (visW - frameW) / 2;
         var cropY = offY + (visH - frameH) / 2;
 
+        var targetW = Math.min(520, Math.max(160, Math.round(frameW)));
+        var targetH = Math.max(50, Math.round(targetW * (frameH / frameW)));
+
         var canvas = document.createElement('canvas');
-        canvas.width = Math.max(100, Math.round(frameW));
-        canvas.height = Math.max(40, Math.round(frameH));
+        canvas.width = targetW;
+        canvas.height = targetH;
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, targetW, targetH);
 
         var currentSig = getFrameSignature(ctx, canvas.width, canvas.height);
         if (isFromAuto) {
@@ -825,7 +871,7 @@
             btn.textContent = '⏳ Auto-sken číta ŠPZ...';
         }
 
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.78);
         var previewImg = document.getElementById('crop-preview');
         var previewBox = document.getElementById('crop-preview-box');
         if (previewImg && previewBox) {
@@ -834,7 +880,7 @@
         }
         var base64Image = dataUrl.split(',').at(1);
 
-        var models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+        var models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
         var rawResult = '';
         var lastError = '';
         var success = false;
@@ -842,53 +888,26 @@
 
         var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
 
-        activeAbortController = new AbortController();
-        var timeoutId = setTimeout(function() {
-            if (activeAbortController) activeAbortController.abort();
-        }, 8000);
-
         try {
             for (var i = 0; i < models.length; i++) {
+                if (!stream && !isFromAuto) break;
                 var modelName = models.at(i);
                 try {
-                    var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent?key=' + encodeURIComponent(geminiApiKey), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        signal: activeAbortController.signal,
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [
-                                    { text: promptText },
-                                    { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-                                ]
-                            }],
-                            generationConfig: { temperature: 0.0 }
-                        })
-                    });
-
-                    var data = await response.json();
-                    if (data.error) {
-                        lastError = data.error.message || 'Chyba API';
-                        continue;
-                    }
-
-                    var candidate = data.candidates ? data.candidates.at(0) : null;
-                    var part = (candidate && candidate.content && candidate.content.parts) ? candidate.content.parts.at(0) : null;
-                    rawResult = part ? (part.text || '') : '';
+                    rawResult = await callGeminiModel(modelName, promptText, base64Image);
                     usedModel = modelName;
                     success = true;
                     break;
                 } catch (err) {
                     if (err.name === 'AbortError') {
-                        lastError = 'Časový limit vypršal (slabý signál).';
-                        break;
+                        lastError = 'Časový limit pripojenia vypršal (slabý signál).';
+                    } else {
+                        lastError = err.message;
                     }
-                    lastError = err.message;
                 }
             }
 
             if (!success) {
-                throw new Error(lastError || 'Všetky AI modely sú momentálne nedostupné.');
+                throw new Error(lastError || 'AI modely sú momentálne nedostupné.');
             }
 
             incrementDailyCount(usedModel);
@@ -913,8 +932,6 @@
                 alert('Chyba pri čítaní: ' + e.message);
             }
         } finally {
-            clearTimeout(timeoutId);
-            activeAbortController = null;
             isScanningNow = false;
             if (!isAutoMode) {
                 btn.disabled = false;
