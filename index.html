@@ -41,21 +41,20 @@
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
 
-        .camera-box { position: relative; width: 100%; height: 270px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
-        .camera-box.tall { height: 320px; }
+        .camera-box { position: relative; width: 100%; height: 190px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 7px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
+        .camera-box.tall { height: 240px; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 84px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
-        .scan-frame.tall { height: 136px; }
+        .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 74px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
+        .scan-frame.tall { height: 122px; }
         .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
-        .quota-badge { position: absolute; top: 10px; left: 10px; z-index: 6; background: rgba(0,0,0,0.68); color: #e2e8f0; padding: 4px 9px; border-radius: 8px; font-size: 0.72rem; pointer-events: none; }
         #cam-stop-btn { display: none; position: absolute; top: 10px; right: 10px; z-index: 6; background: rgba(220, 38, 38, 0.92); color: white; border: none; padding: 6px 11px; border-radius: 8px; font-size: 0.78rem; font-weight: bold; cursor: pointer; }
         #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
 
-        .mode-switch { display: flex; gap: 6px; margin-bottom: 10px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
+        .mode-switch { display: flex; gap: 6px; margin-bottom: 7px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
         .mode-switch button { flex: 1; padding: 8px 4px; border: none; border-radius: 7px; font-size: 0.8rem; font-weight: 600; background: transparent; color: #475569; cursor: pointer; }
         .mode-switch button.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 7px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-export { background: var(--export); color: white; }
@@ -98,14 +97,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.47</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.48</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.47</span>
+        <span class="version-tag">v1.48</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -121,7 +120,6 @@
     </div>
 
     <div class="camera-box" id="camera-box">
-        <div class="quota-badge" id="quota-badge">Dnes: PlateRec 0 | lite 0 | flash 0</div>
         <button id="cam-stop-btn" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
@@ -140,9 +138,9 @@
     </div>
 
     <div class="mode-switch">
-        <button id="ai-plate" class="active" onclick="setAiModule('plate')">🎯 Plate</button>
-        <button id="ai-lite" onclick="setAiModule('lite')">⚡ Lite</button>
-        <button id="ai-flash" onclick="setAiModule('flash')">🧠 Flash</button>
+        <button id="ai-plate" class="active" onclick="setAiModule('plate')">🎯 Plate (0)</button>
+        <button id="ai-lite" onclick="setAiModule('lite')">⚡ Lite (0)</button>
+        <button id="ai-flash" onclick="setAiModule('flash')">🧠 Flash (0)</button>
     </div>
 
     <button id="btn-scan" class="btn btn-primary" onclick="scanPlate(false)">📸 Odfotiť a overiť ŠPZ</button>
@@ -331,8 +329,12 @@
 
     function updateQuotaBadge() {
         var counts = getDailyCounts();
-        var el = document.getElementById('quota-badge');
-        if (el) el.textContent = 'Dnes: PlateRec ' + counts.platerec + ' | lite ' + counts.lite + ' | flash ' + counts.flash;
+        var plateBtn = document.getElementById('ai-plate');
+        var liteBtn = document.getElementById('ai-lite');
+        var flashBtn = document.getElementById('ai-flash');
+        if (plateBtn) plateBtn.textContent = '🎯 Plate (' + counts.platerec + ')';
+        if (liteBtn) liteBtn.textContent = '⚡ Lite (' + counts.lite + ')';
+        if (flashBtn) flashBtn.textContent = '🧠 Flash (' + counts.flash + ')';
     }
 
     updateQuotaBadge();
