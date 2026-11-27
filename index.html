@@ -102,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.58</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.59</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.58</span>
+        <span class="version-tag">v1.59</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -213,6 +213,15 @@
         <button class="btn btn-export" style="margin:0; flex:1;" onclick="exportCSV()">📥 Stiahnuť históriu do Excelu (CSV)</button>
         <button id="btn-clear-history" class="btn btn-danger admin-only" onclick="clearHistory()">🔒 Zmazať históriu</button>
     </div>
+    <div class="mode-switch">
+        <button id="hist-filter-all" class="active" onclick="setHistoryFilter('all')">Všetky</button>
+        <button id="hist-filter-ok" onclick="setHistoryFilter('ok')">✅ Povolené</button>
+        <button id="hist-filter-fail" onclick="setHistoryFilter('fail')">⛔ Nepovolené</button>
+    </div>
+    <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <input type="text" id="hist-search" placeholder="🔍 Hľadať ŠPZ, meno, dátum alebo kontrolóra..." style="margin-bottom:0;" oninput="renderHistory()">
+        <button type="button" class="btn btn-outline" style="width:auto; margin-bottom:0; padding:0 14px;" onclick="document.getElementById('hist-search').value=''; renderHistory();" title="Vymazať hľadanie">✕</button>
+    </div>
     <div id="history-list"></div>
 </div>
 
@@ -280,6 +289,7 @@
     let scanCancelledByStop = false;
     var sharedAudioCtx = null;
     var pendingUnauthorizedPlate = null;
+    var historyFilterStatus = 'all';
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function() {});
@@ -1214,12 +1224,31 @@
         }).join('');
     }
 
+    function setHistoryFilter(status) {
+        historyFilterStatus = status;
+        document.getElementById('hist-filter-all').classList.toggle('active', status === 'all');
+        document.getElementById('hist-filter-ok').classList.toggle('active', status === 'ok');
+        document.getElementById('hist-filter-fail').classList.toggle('active', status === 'fail');
+        renderHistory();
+    }
+
     function renderHistory() {
+        var numbered = scanHistory.map(function(h, idx) {
+            return Object.assign({}, h, { origNum: scanHistory.length - idx });
+        });
+        var q = normalizeName((document.getElementById('hist-search') || {}).value || '');
+        var filtered = numbered.filter(function(h) {
+            if (historyFilterStatus === 'ok' && h.allowed !== true) return false;
+            if (historyFilterStatus === 'fail' && h.allowed) return false;
+            if (q && normalizeName(h.plate + ' ' + (h.owner || '') + ' ' + (h.timeStr || '') + ' ' + (h.device || '')).indexOf(q) === -1) return false;
+            return true;
+        });
+
         var list = document.getElementById('history-list');
-        list.innerHTML = scanHistory.map(function(h, idx) {
+        list.innerHTML = filtered.map(function(h) {
             return '<div class="card">' +
                 '<div class="card-info">' +
-                '<span style="font-weight:bold; color:#64748b; margin-right:6px; font-size:0.88rem;">' + (scanHistory.length - idx) + '.</span>' +
+                '<span style="font-weight:bold; color:#64748b; margin-right:6px; font-size:0.88rem;">' + h.origNum + '.</span>' +
                 '<span class="status-dot" style="background:' + (h.allowed ? 'var(--success)' : 'var(--danger)') + '"></span>' +
                 '<span class="plate-badge">' + escapeHtml(h.plate) + '</span>' +
                 '<div class="meta">' + escapeHtml(h.owner) + ' • ' + escapeHtml(h.timeStr || '') + ' (' + escapeHtml(h.device || '') + ')</div>' +
