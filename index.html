@@ -60,6 +60,7 @@
         .btn-export { background: var(--export); color: white; }
         .btn-outline { background: white; border: 1px solid #cbd5e1; color: var(--text); }
         .btn-danger { background: var(--danger); color: white; padding: 8px 12px; font-size: 0.82rem; width: auto; margin: 0; flex-shrink: 0; }
+        #btn-scan { padding: 18px 14px; font-size: 1.15rem; border-radius: 12px; }
 
         input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; margin-bottom: 10px; background: white; }
         .manual-check { display: flex; gap: 8px; margin-top: 10px; }
@@ -97,14 +98,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.52</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.53</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.52</span>
+        <span class="version-tag">v1.53</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -133,17 +134,12 @@
     </div>
 
     <div class="mode-switch">
-        <button id="scan-manual" class="active" onclick="setAutoMode(false)">👆 Manuálne (tlačidlom)</button>
-        <button id="scan-auto" onclick="setAutoMode(true)">🚶 Auto-sken pri chôdzi</button>
-    </div>
-
-    <div class="mode-switch">
         <button id="ai-plate" class="active" onclick="setAiModule('plate')">🎯 Plate (0)</button>
         <button id="ai-lite" onclick="setAiModule('lite')">⚡ Lite (0)</button>
         <button id="ai-flash" onclick="setAiModule('flash')">🧠 Flash (0)</button>
     </div>
 
-    <button id="btn-scan" class="btn btn-primary" onclick="scanPlate(false)">📸 Odfotiť a overiť ŠPZ</button>
+    <button id="btn-scan" class="btn btn-primary" onclick="scanPlate()">📸 Odfotiť a overiť ŠPZ</button>
 
     <div id="crop-preview-box">
         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 3px;">Odfotený výrez pre AI:</div>
@@ -266,14 +262,9 @@
     let isTallFrame = false;
     let selectedAiModule = 'plate';
 
-    let isAutoMode = false;
-    let autoTimer = null;
     let isScanningNow = false;
     let activeAbortController = null;
     let scanCancelledByStop = false;
-    let lastFrameSignature = null;
-    let lastAutoPlate = '';
-    let lastAutoTime = 0;
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function() {});
@@ -702,46 +693,9 @@
         document.getElementById('scan-frame').classList.toggle('tall', tall);
         document.getElementById('frame-1').classList.toggle('active', !tall);
         document.getElementById('frame-2').classList.toggle('active', tall);
-        if (!isAutoMode) {
-            document.getElementById('scan-hint').textContent = tall
-                ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
-                : 'Umiestni ŠPZ do modrého rámika';
-        }
-    }
-
-    function setAutoMode(auto) {
-        isAutoMode = auto;
-        document.getElementById('scan-manual').classList.toggle('active', !auto);
-        document.getElementById('scan-auto').classList.toggle('active', auto);
-        var btn = document.getElementById('btn-scan');
-
-        if (auto) {
-            lastFrameSignature = null;
-            btn.textContent = '🚶 Auto-sken je aktívny (kráčaj popri autách)...';
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-success');
-            document.getElementById('scan-hint').textContent = 'Auto-sken: sledujem pohyb a ŠPZ...';
-            if (!stream) {
-                startCamera();
-            }
-            if (autoTimer) clearInterval(autoTimer);
-            autoTimer = setInterval(function() {
-                if (isAutoMode && stream && !isScanningNow) {
-                    scanPlate(true);
-                }
-            }, 4500);
-        } else {
-            if (autoTimer) {
-                clearInterval(autoTimer);
-                autoTimer = null;
-            }
-            btn.textContent = '📸 Odfotiť a overiť ŠPZ';
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-primary');
-            document.getElementById('scan-hint').textContent = isTallFrame
-                ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
-                : 'Umiestni ŠPZ do modrého rámika';
-        }
+        document.getElementById('scan-hint').textContent = tall
+            ? 'Umiestni 2-riadkovú ŠPZ do modrého okna'
+            : 'Umiestni ŠPZ do modrého rámika';
     }
 
     function setAiModule(mod) {
@@ -779,16 +733,12 @@
             document.getElementById('cam-start-btn').style.display = 'none';
             document.getElementById('cam-stop-btn').style.display = 'inline-block';
         } catch (err) {
-            if (isAutoMode) setAutoMode(false);
             alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.\n(' + err.message + ')');
         }
     }
 
     function stopCamera() {
         scanCancelledByStop = true;
-        if (isAutoMode) {
-            setAutoMode(false);
-        }
         if (activeAbortController) {
             try { activeAbortController.abort(); } catch (e) {}
             activeAbortController = null;
@@ -807,31 +757,6 @@
         btn.textContent = '📸 Odfotiť a overiť ŠPZ';
     }
 
-    function getFrameSignature(ctx, w, h) {
-        var stepX = Math.max(1, Math.floor(w / 16));
-        var stepY = Math.max(1, Math.floor(h / 8));
-        var data = ctx.getImageData(0, 0, w, h).data;
-        var sig = [];
-        for (var y = 0; y < h; y += stepY) {
-            for (var x = 0; x < w; x += stepX) {
-                var idx = (y * w + x) * 4;
-                var lum = Math.round((data.at(idx) + data.at(idx + 1) + data.at(idx + 2)) / 3);
-                sig.push(lum);
-            }
-        }
-        return sig;
-    }
-
-    function hasSceneChanged(sigA, sigB) {
-        if (!sigA || !sigB || sigA.length !== sigB.length) return true;
-        var diffSum = 0;
-        for (var i = 0; i < sigA.length; i++) {
-            diffSum += Math.abs(sigA.at(i) - sigB.at(i));
-        }
-        var avgDiff = diffSum / sigA.length;
-        return avgDiff > 14;
-    }
-
     function dataUrlToBlob(dataUrl) {
         var parts = dataUrl.split(',');
         var mimeMatch = parts[0].match(/:(.*?);/);
@@ -845,7 +770,7 @@
         return new Blob([u8arr], { type: mime });
     }
 
-    async function scanPlate(isFromAuto) {
+    async function scanPlate() {
         if (isScanningNow) return;
         var video = document.getElementById('video');
         if (!stream) {
@@ -856,17 +781,17 @@
 
         if (selectedAiModule === 'plate') {
             if (!prApiToken) {
-                if (!isFromAuto) alert('Chýba Plate Recognizer API Token! Admin ho musí nastaviť v záložke Užívatelia.');
+                alert('Chýba Plate Recognizer API Token! Admin ho musí nastaviť v záložke Užívatelia.');
                 return;
             }
         } else {
             if (!geminiApiKey) {
-                if (!isFromAuto) alert('Chýba Gemini API kľúč! Admin ho musí nastaviť v záložke Užívatelia.');
+                alert('Chýba Gemini API kľúč! Admin ho musí nastaviť v záložke Užívatelia.');
                 return;
             }
         }
         if (!navigator.onLine) {
-            if (!isFromAuto) alert('Na čítanie značiek cez AI je potrebné internetové pripojenie. Zadaj ŠPZ ručne.');
+            alert('Na čítanie značiek cez AI je potrebné internetové pripojenie. Zadaj ŠPZ ručne.');
             return;
         }
 
@@ -897,25 +822,11 @@
         var ctx = canvas.getContext('2d');
         ctx.drawImage(video, cropX, cropY, frameW, frameH, 0, 0, canvas.width, canvas.height);
 
-        var currentSig = getFrameSignature(ctx, canvas.width, canvas.height);
-        if (isFromAuto) {
-            if (!hasSceneChanged(lastFrameSignature, currentSig)) {
-                return;
-            }
-            lastFrameSignature = currentSig;
-        } else {
-            lastFrameSignature = currentSig;
-        }
-
         isScanningNow = true;
         scanCancelledByStop = false;
         var btn = document.getElementById('btn-scan');
-        if (!isFromAuto) {
-            btn.disabled = true;
-            btn.textContent = '⏳ AI číta ŠPZ...';
-        } else {
-            btn.textContent = '⏳ Auto-sken číta ŠPZ...';
-        }
+        btn.disabled = true;
+        btn.textContent = '⏳ AI číta ŠPZ...';
 
         var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
         var previewImg = document.getElementById('crop-preview');
@@ -980,6 +891,7 @@
                     clearTimeout(prTimeoutId);
                 }
             } else {
+                // POZNÁMKA PRE AI: Názvy modelov ('gemini-3.5-flash-lite' a 'gemini-3.8-flash') aj časový limit 5000 ms sú overené a funkčné. Nemeň ich, nezvyšuj timeout a nepridávaj automatický fallback z Flash na Lite.
                 var modelName = selectedAiModule === 'lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
                 var promptText = "Prečítaj evidenčné číslo vozidla (ŠPZ / EČV) z obrázka. Môže ísť o slovenskú (SK), českú (CZ), nemeckú (DE), rakúsku (AT), ukrajinskú (UA) alebo inú európsku značku, vrátane značiek na želanie zložených len z písmen. DÔLEŽITÉ PRAVIDLÁ: 1. Spočítaj presne každý znak – nezdvojuj opakujúce sa číslice alebo písmená (napr. 222 nie je 2222). 2. Ignoruj modrý pásik s kódom krajiny (SK, CZ, D, A, UA), štátny znak v strede značky, nálepky STK/EK a nápisy na rámiku pod značkou. 3. Vráť IBA čisté písmená a číslice značky bez medzier a pomlčiek. Ak na obrázku nie je čitateľná ŠPZ, vráť iba slovo NONE.";
 
@@ -1045,38 +957,26 @@
                 if (moduleInfoEl) {
                     moduleInfoEl.textContent = 'Prečítané cez: ' + usedModel;
                 }
-                var now = Date.now();
-                var skipLog = isFromAuto && (plate === lastAutoPlate) && (now - lastAutoTime < 20000);
-                if (isFromAuto) {
-                    lastAutoPlate = plate;
-                    lastAutoTime = now;
-                }
-                verifyAndLog(plate, skipLog);
+                verifyAndLog(plate);
             } else {
                 if (moduleInfoEl) {
                     moduleInfoEl.textContent = 'Skontrolované cez: ' + usedModel + ' (ŠPZ nerozpoznaná)';
                 }
-                if (!isFromAuto) {
-                    alert('ŠPZ sa nepodarilo prečítať. Skús priblížiť kameru alebo zadaj značku ručne.');
-                }
+                alert('ŠPZ sa nepodarilo prečítať. Skús priblížiť kameru alebo zadaj značku ručne.');
             }
         } catch (e) {
             var errMsg = (e && e.message) ? e.message : 'Neznáma chyba';
             if (moduleInfoEl) {
                 moduleInfoEl.textContent = errMsg.indexOf('Chyba ') === 0 ? errMsg : ('Chyba: ' + errMsg);
             }
-            if (!isFromAuto && stream && !scanCancelledByStop) {
+            if (stream && !scanCancelledByStop) {
                 alert(errMsg.indexOf('Chyba ') === 0 ? errMsg : ('Chyba pri čítaní: ' + errMsg));
             }
         } finally {
             activeAbortController = null;
             isScanningNow = false;
-            if (!isAutoMode) {
-                btn.disabled = false;
-                btn.textContent = '📸 Odfotiť a overiť ŠPZ';
-            } else if (stream) {
-                btn.textContent = '🚶 Auto-sken je aktívny (kráčaj popri autách)...';
-            }
+            btn.disabled = false;
+            btn.textContent = '📸 Odfotiť a overiť ŠPZ';
         }
     }
 
@@ -1084,11 +984,11 @@
         var input = document.getElementById('manual-plate');
         var plate = normalizePlate(input.value);
         if (plate.length < 3) return alert('Zadaj platnú ŠPZ.');
-        verifyAndLog(plate, false);
+        verifyAndLog(plate);
         input.value = '';
     }
 
-    function verifyAndLog(plate, skipHistoryLog) {
+    function verifyAndLog(plate) {
         var found = allowedCars.find(function(c) { return c.plate === plate; });
         var banner = document.getElementById('result-banner');
         var statusEl = document.getElementById('result-status');
@@ -1109,8 +1009,6 @@
             ownerEl.textContent = 'Nie je v zozname';
             playBeep(false);
         }
-
-        if (skipHistoryLog) return;
 
         var userLabel = currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : 'Neznámy';
         var record = {
