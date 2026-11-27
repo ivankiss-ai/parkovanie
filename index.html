@@ -41,12 +41,12 @@
         .tab { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab.active { display: block; }
 
-        .camera-box { position: relative; width: 100%; height: 190px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 7px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
-        .camera-box.tall { height: 240px; }
+        .camera-box { position: relative; width: 100%; height: 155px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 7px; display: flex; align-items: center; justify-content: center; transition: height 0.2s; }
+        .camera-box.tall { height: 205px; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 74px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
-        .scan-frame.tall { height: 122px; }
-        .scan-hint { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; font-size: 0.85rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
+        .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 88%; height: 64px; border: 3px solid #38bdf8; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.62); pointer-events: none; transition: height 0.2s; }
+        .scan-frame.tall { height: 106px; }
+        .scan-hint { position: absolute; bottom: 6px; width: 100%; text-align: center; color: white; font-size: 0.8rem; text-shadow: 0 1px 3px #000; pointer-events: none; }
         #cam-stop-btn { display: none; position: absolute; top: 10px; right: 10px; z-index: 6; background: rgba(220, 38, 38, 0.92); color: white; border: none; padding: 6px 11px; border-radius: 8px; font-size: 0.78rem; font-weight: bold; cursor: pointer; }
         #cam-start-btn { position: absolute; z-index: 5; background: var(--primary); color: white; border: none; padding: 13px 20px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
 
@@ -102,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.55</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.56</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.55</span>
+        <span class="version-tag">v1.56</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -1104,6 +1104,15 @@
         document.getElementById('new-owner').value = '';
     }
 
+    function editCarOwner(encodedPlate, encodedOwner) {
+        var plate = decodeURIComponent(encodedPlate);
+        var currentOwner = decodeURIComponent(encodedOwner);
+        var newOwner = prompt('Uprav meno / poznámku pre ' + plate + ':', currentOwner);
+        if (newOwner !== null) {
+            if (db) db.collection('allowed_cars').doc(plate).set({ owner: newOwner.trim() });
+        }
+    }
+
     function removeCar(encodedPlate) {
         var plate = decodeURIComponent(encodedPlate);
         var p = prompt('Zadaj svoje heslo pre zmazanie auta ' + plate + ':');
@@ -1189,16 +1198,20 @@
                 '<span class="plate-badge">' + escapeHtml(c.plate) + '</span>' +
                 '<div class="meta">' + (escapeHtml(c.owner) || '—') + '</div>' +
                 '</div>' +
+                '<div style="display:flex; gap:6px; flex-shrink:0;">' +
+                '<button class="btn btn-outline" style="width:auto; margin:0; padding:8px 10px; font-size:0.82rem; flex-shrink:0;" onclick="editCarOwner(\'' + encodeURIComponent(c.plate) + '\', \'' + encodeURIComponent(c.owner || '') + '\')">✏️ Upraviť</button>' +
                 '<button class="btn btn-danger" onclick="removeCar(\'' + encodeURIComponent(c.plate) + '\')">🔒 Zmazať</button>' +
+                '</div>' +
                 '</div>';
         }).join('');
     }
 
     function renderHistory() {
         var list = document.getElementById('history-list');
-        list.innerHTML = scanHistory.map(function(h) {
+        list.innerHTML = scanHistory.map(function(h, idx) {
             return '<div class="card">' +
                 '<div class="card-info">' +
+                '<span style="font-weight:bold; color:#64748b; margin-right:6px; font-size:0.88rem;">' + (idx + 1) + '.</span>' +
                 '<span class="status-dot" style="background:' + (h.allowed ? 'var(--success)' : 'var(--danger)') + '"></span>' +
                 '<span class="plate-badge">' + escapeHtml(h.plate) + '</span>' +
                 '<div class="meta">' + escapeHtml(h.owner) + ' • ' + escapeHtml(h.timeStr || '') + ' (' + escapeHtml(h.device || '') + ')</div>' +
@@ -1213,10 +1226,11 @@
         if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
         if (db) {
-            var snap = await db.collection('scan_history').get();
-            for (var i = 0; i < snap.docs.length; i += 400) {
+            while (true) {
+                var snap = await db.collection('scan_history').limit(400).get();
+                if (snap.empty) break;
                 var batch = db.batch();
-                snap.docs.slice(i, i + 400).forEach(function(doc) {
+                snap.docs.forEach(function(doc) {
                     batch.delete(doc.ref);
                 });
                 await batch.commit();
