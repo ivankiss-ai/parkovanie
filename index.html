@@ -102,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.57</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.58</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.57</span>
+        <span class="version-tag">v1.58</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -188,6 +188,10 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <strong>Povolené autá (<span id="db-count">0</span>)</strong>
         <button class="btn btn-danger admin-only" onclick="clearDB()">🔒 Vymazať všetko</button>
+    </div>
+    <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <input type="text" id="db-search" placeholder="🔍 Hľadať podľa ŠPZ alebo mena..." style="margin-bottom:0;" oninput="renderDB()">
+        <button type="button" class="btn btn-outline" style="width:auto; margin-bottom:0; padding:0 14px;" onclick="document.getElementById('db-search').value=''; renderDB();" title="Vymazať hľadanie">✕</button>
     </div>
     <div id="db-list"></div>
 </div>
@@ -1190,9 +1194,13 @@
     }
 
     function renderDB() {
-        document.getElementById('db-count').textContent = allowedCars.length;
+        var q = normalizeName((document.getElementById('db-search') || {}).value || '');
+        var filtered = q ? allowedCars.filter(function(c) {
+            return normalizeName(c.plate).indexOf(q) !== -1 || normalizeName(c.owner || '').indexOf(q) !== -1;
+        }) : allowedCars;
+        document.getElementById('db-count').textContent = filtered.length === allowedCars.length ? allowedCars.length : (filtered.length + ' / ' + allowedCars.length);
         var list = document.getElementById('db-list');
-        list.innerHTML = allowedCars.map(function(c) {
+        list.innerHTML = filtered.map(function(c) {
             return '<div class="card">' +
                 '<div class="card-info">' +
                 '<span class="plate-badge">' + escapeHtml(c.plate) + '</span>' +
