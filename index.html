@@ -102,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.59</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.60</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.59</span>
+        <span class="version-tag">v1.60</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -125,11 +125,13 @@
         <div id="unauth-actions">
             <button type="button" class="btn-unauth-save" onclick="confirmUnauthorizedLog()">✅ Zapísať</button>
             <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">❌ Nezapísať</button>
+            <button type="button" class="btn-unauth-allow" onclick="allowPendingCar()" style="flex:1; padding:8px 6px; border:none; border-radius:8px; font-size:0.85rem; font-weight:bold; cursor:pointer; background:#dbeafe; color:#1d4ed8; box-shadow:0 2px 4px rgba(0,0,0,0.18);">➕ Povoliť</button>
         </div>
         <div id="unauth-saved-msg">✔️ Zapísané do histórie</div>
     </div>
 
     <div class="camera-box" id="camera-box">
+        <button id="cam-torch-btn" onclick="toggleTorch()" style="display:none; position:absolute; top:10px; left:10px; z-index:6; background:rgba(15, 23, 42, 0.85); color:white; border:1px solid rgba(255,255,255,0.3); padding:6px 11px; border-radius:8px; font-size:0.78rem; font-weight:bold; cursor:pointer;">🔦 Blesk</button>
         <button id="cam-stop-btn" onclick="stopCamera()">⏹️ Vypnúť kameru</button>
         <button id="cam-start-btn" onclick="startCamera()">🎥 Zapnúť kameru</button>
         <video id="video" autoplay playsinline muted></video>
@@ -213,6 +215,7 @@
         <button class="btn btn-export" style="margin:0; flex:1;" onclick="exportCSV()">📥 Stiahnuť históriu do Excelu (CSV)</button>
         <button id="btn-clear-history" class="btn btn-danger admin-only" onclick="clearHistory()">🔒 Zmazať históriu</button>
     </div>
+    <div id="hist-today-stats" style="background:white; padding:9px 12px; border-radius:8px; margin-bottom:10px; font-size:0.84rem; font-weight:600; color:#334155; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,0.04);">Dnes skontrolované: 0 • ✅ 0 • ⛔ 0</div>
     <div class="mode-switch">
         <button id="hist-filter-all" class="active" onclick="setHistoryFilter('all')">Všetky</button>
         <button id="hist-filter-ok" onclick="setHistoryFilter('ok')">✅ Povolené</button>
@@ -290,6 +293,7 @@
     var sharedAudioCtx = null;
     var pendingUnauthorizedPlate = null;
     var historyFilterStatus = 'all';
+    var isTorchOn = false;
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function() {});
@@ -764,6 +768,41 @@
     }
 
     var stream = null;
+
+    function resetTorchUI() {
+        isTorchOn = false;
+        var torchBtn = document.getElementById('cam-torch-btn');
+        if (torchBtn) {
+            torchBtn.style.background = 'rgba(15, 23, 42, 0.85)';
+            torchBtn.style.color = 'white';
+            torchBtn.textContent = '🔦 Blesk';
+        }
+    }
+
+    async function toggleTorch() {
+        var track = stream ? stream.getVideoTracks().at(0) : null;
+        if (!track) return;
+        var torchBtn = document.getElementById('cam-torch-btn');
+        try {
+            isTorchOn = !isTorchOn;
+            await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
+            if (torchBtn) {
+                if (isTorchOn) {
+                    torchBtn.style.background = '#eab308';
+                    torchBtn.style.color = '#000';
+                    torchBtn.textContent = '🔦 Svieti';
+                } else {
+                    torchBtn.style.background = 'rgba(15, 23, 42, 0.85)';
+                    torchBtn.style.color = 'white';
+                    torchBtn.textContent = '🔦 Blesk';
+                }
+            }
+        } catch (err) {
+            resetTorchUI();
+            alert('Blesk nie je na tomto zariadení podporovaný.');
+        }
+    }
+
     async function startCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -773,6 +812,9 @@
             video.srcObject = stream;
             document.getElementById('cam-start-btn').style.display = 'none';
             document.getElementById('cam-stop-btn').style.display = 'inline-block';
+            resetTorchUI();
+            var torchBtn = document.getElementById('cam-torch-btn');
+            if (torchBtn) torchBtn.style.display = 'inline-block';
         } catch (err) {
             alert('Nepodarilo sa zapnúť kameru. Povoľ prístup ku kamere v prehliadači.\n(' + err.message + ')');
         }
@@ -791,6 +833,9 @@
         }
         var video = document.getElementById('video');
         if (video) video.srcObject = null;
+        resetTorchUI();
+        var torchBtn = document.getElementById('cam-torch-btn');
+        if (torchBtn) torchBtn.style.display = 'none';
         document.getElementById('cam-stop-btn').style.display = 'none';
         document.getElementById('cam-start-btn').style.display = 'inline-block';
         var btn = document.getElementById('btn-scan');
@@ -1077,6 +1122,26 @@
         document.getElementById('result-banner').style.display = 'none';
     }
 
+    function allowPendingCar() {
+        if (!pendingUnauthorizedPlate) return;
+        var owner = prompt('Pridať ' + pendingUnauthorizedPlate + ' medzi povolené.\nZadaj meno majiteľa / firmu:', '');
+        if (owner === null) return;
+
+        var trimmedOwner = owner.trim();
+        var plateToAllow = pendingUnauthorizedPlate;
+
+        if (db) db.collection('allowed_cars').doc(plateToAllow).set({ owner: trimmedOwner });
+        saveScanRecord(plateToAllow, { owner: trimmedOwner });
+
+        pendingUnauthorizedPlate = null;
+        document.getElementById('unauth-actions').style.display = 'none';
+        var banner = document.getElementById('result-banner');
+        banner.className = 'ok';
+        document.getElementById('result-status').textContent = '✅ PRIDANÉ A POVOLENÉ';
+        document.getElementById('result-owner').textContent = trimmedOwner || 'Bez poznámky';
+        playBeep(true);
+    }
+
     function verifyAndLog(plate) {
         var found = allowedCars.find(function(c) { return c.plate === plate; });
         var banner = document.getElementById('result-banner');
@@ -1233,6 +1298,20 @@
     }
 
     function renderHistory() {
+        var todaySk = new Date().toLocaleDateString('sk-SK');
+        var okCount = 0;
+        var failCount = 0;
+        scanHistory.forEach(function(h) {
+            if (h.timeStr && h.timeStr.indexOf(todaySk) !== -1) {
+                if (h.allowed === true) okCount++;
+                else failCount++;
+            }
+        });
+        var statsEl = document.getElementById('hist-today-stats');
+        if (statsEl) {
+            statsEl.textContent = 'Dnes skontrolované: ' + (okCount + failCount) + ' • ✅ ' + okCount + ' • ⛔ ' + failCount;
+        }
+
         var numbered = scanHistory.map(function(h, idx) {
             return Object.assign({}, h, { origNum: scanHistory.length - idx });
         });
