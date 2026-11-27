@@ -67,14 +67,13 @@
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 10px 12px; border-radius: 10px; color: white; text-align: center; margin-bottom: 8px; }
+        #result-banner { display: none; padding: 7px 10px; border-radius: 10px; color: white; text-align: center; margin-bottom: 6px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
-        #result-plate { font-size: 1.45rem; font-weight: 900; letter-spacing: 1.5px; margin: 2px 0; word-break: break-all; }
-        #unauth-actions { display: none; margin-top: 10px; flex-direction: column; gap: 7px; }
-        .unauth-prompt { font-size: 0.84rem; font-weight: 600; opacity: 0.95; }
-        .btn-unauth-save { width: 100%; padding: 11px 12px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: bold; cursor: pointer; background: #ffffff; color: #15803d; box-shadow: 0 2px 4px rgba(0,0,0,0.18); }
-        .btn-unauth-retry { width: 100%; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: #334155; color: #ffffff; }
+        #result-plate { font-size: 1.25rem; font-weight: 900; letter-spacing: 1.5px; margin: 1px 0; word-break: break-all; }
+        #unauth-actions { display: none; margin-top: 6px; flex-direction: row; gap: 6px; }
+        .btn-unauth-save { flex: 1; padding: 8px 6px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; background: #ffffff; color: #15803d; box-shadow: 0 2px 4px rgba(0,0,0,0.18); }
+        .btn-unauth-retry { flex: 1; padding: 8px 6px; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; background: #334155; color: #ffffff; }
         #unauth-saved-msg { display: none; margin-top: 8px; font-size: 0.92rem; font-weight: bold; background: rgba(0,0,0,0.22); padding: 6px 10px; border-radius: 6px; }
 
         #crop-preview-box { display: none; text-align: center; margin-bottom: 10px; }
@@ -103,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.54</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.55</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.54</span>
+        <span class="version-tag">v1.55</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -124,9 +123,8 @@
         <div id="result-plate"></div>
         <div id="result-owner" style="font-size: 0.85rem;"></div>
         <div id="unauth-actions">
-            <div class="unauth-prompt">Bola ŠPZ prečítaná správne?</div>
-            <button type="button" class="btn-unauth-save" onclick="confirmUnauthorizedLog()">✅ Zapísať do histórie ako nepovolené</button>
-            <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">🔄 Zle prečítané – nezapisovať (skúsiť znova)</button>
+            <button type="button" class="btn-unauth-save" onclick="confirmUnauthorizedLog()">✅ Zapísať</button>
+            <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">🔄 Znova (nezapisovať)</button>
         </div>
         <div id="unauth-saved-msg">✔️ Zapísané do histórie</div>
     </div>
