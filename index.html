@@ -67,10 +67,15 @@
         .manual-check input { margin-bottom: 0; text-transform: uppercase; font-weight: bold; }
         .manual-check button { width: auto; margin-bottom: 0; padding: 0 20px; }
 
-        #result-banner { display: none; padding: 9px 12px; border-radius: 10px; color: white; text-align: center; margin-bottom: 8px; }
+        #result-banner { display: none; padding: 10px 12px; border-radius: 10px; color: white; text-align: center; margin-bottom: 8px; }
         #result-banner.ok { background: var(--success); }
         #result-banner.fail { background: var(--danger); }
         #result-plate { font-size: 1.45rem; font-weight: 900; letter-spacing: 1.5px; margin: 2px 0; word-break: break-all; }
+        #unauth-actions { display: none; margin-top: 10px; flex-direction: column; gap: 7px; }
+        .unauth-prompt { font-size: 0.84rem; font-weight: 600; opacity: 0.95; }
+        .btn-unauth-save { width: 100%; padding: 11px 12px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: bold; cursor: pointer; background: #ffffff; color: #15803d; box-shadow: 0 2px 4px rgba(0,0,0,0.18); }
+        .btn-unauth-retry { width: 100%; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; background: #334155; color: #ffffff; }
+        #unauth-saved-msg { display: none; margin-top: 8px; font-size: 0.92rem; font-weight: bold; background: rgba(0,0,0,0.22); padding: 6px 10px; border-radius: 6px; }
 
         #crop-preview-box { display: none; text-align: center; margin-bottom: 10px; }
         #crop-preview { max-height: 54px; border-radius: 6px; border: 2px solid #cbd5e1; }
@@ -98,14 +103,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.53</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.54</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.53</span>
+        <span class="version-tag">v1.54</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -118,6 +123,12 @@
         <div id="result-status" style="font-weight: bold; font-size: 0.9rem;"></div>
         <div id="result-plate"></div>
         <div id="result-owner" style="font-size: 0.85rem;"></div>
+        <div id="unauth-actions">
+            <div class="unauth-prompt">Bola ŠPZ prečítaná správne?</div>
+            <button type="button" class="btn-unauth-save" onclick="confirmUnauthorizedLog()">✅ Zapísať do histórie ako nepovolené</button>
+            <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">🔄 Zle prečítané – nezapisovať (skúsiť znova)</button>
+        </div>
+        <div id="unauth-saved-msg">✔️ Zapísané do histórie</div>
     </div>
 
     <div class="camera-box" id="camera-box">
@@ -265,6 +276,8 @@
     let isScanningNow = false;
     let activeAbortController = null;
     let scanCancelledByStop = false;
+    var sharedAudioCtx = null;
+    var pendingUnauthorizedPlate = null;
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(function() {});
@@ -331,26 +344,42 @@
     updateQuotaBadge();
     setInterval(updateQuotaBadge, 60000);
 
-    function playBeep(isOk) {
+    function unlockAudio() {
         try {
             var AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
-            var ctx = new AudioCtx();
-            var osc = ctx.createOscillator();
-            var gain = ctx.createGain();
+            if (!sharedAudioCtx) {
+                sharedAudioCtx = new AudioCtx();
+            }
+            if (sharedAudioCtx.state === 'suspended') {
+                sharedAudioCtx.resume().catch(function() {});
+            }
+        } catch (e) {}
+    }
+
+    function playBeep(isOk) {
+        if (navigator.vibrate) {
+            navigator.vibrate(isOk ? [100] : [250, 100, 250]);
+        }
+        try {
+            unlockAudio();
+            if (!sharedAudioCtx) return;
+            var osc = sharedAudioCtx.createOscillator();
+            var gain = sharedAudioCtx.createGain();
+            osc.type = isOk ? 'triangle' : 'sawtooth';
             osc.connect(gain);
-            gain.connect(ctx.destination);
-            gain.gain.value = 0.15;
+            gain.connect(sharedAudioCtx.destination);
+            gain.gain.value = 0.8;
             if (isOk) {
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                osc.frequency.setValueAtTime(1174, ctx.currentTime + 0.12);
+                osc.frequency.setValueAtTime(880, sharedAudioCtx.currentTime);
+                osc.frequency.setValueAtTime(1174, sharedAudioCtx.currentTime + 0.12);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.25);
+                osc.stop(sharedAudioCtx.currentTime + 0.25);
             } else {
-                osc.frequency.setValueAtTime(300, ctx.currentTime);
-                osc.frequency.setValueAtTime(220, ctx.currentTime + 0.18);
+                osc.frequency.setValueAtTime(300, sharedAudioCtx.currentTime);
+                osc.frequency.setValueAtTime(220, sharedAudioCtx.currentTime + 0.18);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.38);
+                osc.stop(sharedAudioCtx.currentTime + 0.38);
             }
         } catch (e) {}
     }
@@ -771,6 +800,11 @@
     }
 
     async function scanPlate() {
+        unlockAudio();
+        pendingUnauthorizedPlate = null;
+        document.getElementById('unauth-actions').style.display = 'none';
+        document.getElementById('unauth-saved-msg').style.display = 'none';
+
         if (isScanningNow) return;
         var video = document.getElementById('video');
         if (!stream) {
@@ -981,6 +1015,11 @@
     }
 
     function manualVerify() {
+        unlockAudio();
+        pendingUnauthorizedPlate = null;
+        document.getElementById('unauth-actions').style.display = 'none';
+        document.getElementById('unauth-saved-msg').style.display = 'none';
+
         var input = document.getElementById('manual-plate');
         var plate = normalizePlate(input.value);
         if (plate.length < 3) return alert('Zadaj platnú ŠPZ.');
@@ -988,28 +1027,7 @@
         input.value = '';
     }
 
-    function verifyAndLog(plate) {
-        var found = allowedCars.find(function(c) { return c.plate === plate; });
-        var banner = document.getElementById('result-banner');
-        var statusEl = document.getElementById('result-status');
-        var plateEl = document.getElementById('result-plate');
-        var ownerEl = document.getElementById('result-owner');
-
-        banner.style.display = 'block';
-        plateEl.textContent = plate;
-
-        if (found) {
-            banner.className = 'ok';
-            statusEl.textContent = '✅ POVOLENÉ VOZIDLO';
-            ownerEl.textContent = found.owner || 'Bez poznámky';
-            playBeep(true);
-        } else {
-            banner.className = 'fail';
-            statusEl.textContent = '⛔ NEPOVOLENÉ VOZIDLO';
-            ownerEl.textContent = 'Nie je v zozname';
-            playBeep(false);
-        }
-
+    function saveScanRecord(plate, found) {
         var userLabel = currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : 'Neznámy';
         var record = {
             plate: plate,
@@ -1028,6 +1046,53 @@
             scanHistory.unshift(offlineRec);
             localStorage.setItem('park_hist_cache', JSON.stringify(scanHistory));
             renderHistory();
+        }
+    }
+
+    function confirmUnauthorizedLog() {
+        if (!pendingUnauthorizedPlate) return;
+        var plateToSave = pendingUnauthorizedPlate;
+        pendingUnauthorizedPlate = null;
+        saveScanRecord(plateToSave, null);
+        document.getElementById('unauth-actions').style.display = 'none';
+        document.getElementById('unauth-saved-msg').style.display = 'block';
+    }
+
+    function discardUnauthorizedLog() {
+        pendingUnauthorizedPlate = null;
+        document.getElementById('unauth-actions').style.display = 'none';
+        document.getElementById('unauth-saved-msg').style.display = 'none';
+        document.getElementById('result-banner').style.display = 'none';
+    }
+
+    function verifyAndLog(plate) {
+        var found = allowedCars.find(function(c) { return c.plate === plate; });
+        var banner = document.getElementById('result-banner');
+        var statusEl = document.getElementById('result-status');
+        var plateEl = document.getElementById('result-plate');
+        var ownerEl = document.getElementById('result-owner');
+        var actionsEl = document.getElementById('unauth-actions');
+        var savedMsgEl = document.getElementById('unauth-saved-msg');
+
+        banner.style.display = 'block';
+        plateEl.textContent = plate;
+        savedMsgEl.style.display = 'none';
+
+        if (found) {
+            pendingUnauthorizedPlate = null;
+            actionsEl.style.display = 'none';
+            banner.className = 'ok';
+            statusEl.textContent = '✅ POVOLENÉ VOZIDLO';
+            ownerEl.textContent = found.owner || 'Bez poznámky';
+            playBeep(true);
+            saveScanRecord(plate, found);
+        } else {
+            pendingUnauthorizedPlate = plate;
+            actionsEl.style.display = 'flex';
+            banner.className = 'fail';
+            statusEl.textContent = '⛔ NEPOVOLENÉ VOZIDLO';
+            ownerEl.textContent = 'Nie je v zozname';
+            playBeep(false);
         }
     }
 
