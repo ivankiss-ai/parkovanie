@@ -102,14 +102,14 @@
         <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.56</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.57</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.56</span>
+        <span class="version-tag">v1.57</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -124,7 +124,7 @@
         <div id="result-owner" style="font-size: 0.85rem;"></div>
         <div id="unauth-actions">
             <button type="button" class="btn-unauth-save" onclick="confirmUnauthorizedLog()">✅ Zapísať</button>
-            <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">🔄 Znova (nezapisovať)</button>
+            <button type="button" class="btn-unauth-retry" onclick="discardUnauthorizedLog()">❌ Nezapísať</button>
         </div>
         <div id="unauth-saved-msg">✔️ Zapísané do histórie</div>
     </div>
@@ -1211,7 +1211,7 @@
         list.innerHTML = scanHistory.map(function(h, idx) {
             return '<div class="card">' +
                 '<div class="card-info">' +
-                '<span style="font-weight:bold; color:#64748b; margin-right:6px; font-size:0.88rem;">' + (idx + 1) + '.</span>' +
+                '<span style="font-weight:bold; color:#64748b; margin-right:6px; font-size:0.88rem;">' + (scanHistory.length - idx) + '.</span>' +
                 '<span class="status-dot" style="background:' + (h.allowed ? 'var(--success)' : 'var(--danger)') + '"></span>' +
                 '<span class="plate-badge">' + escapeHtml(h.plate) + '</span>' +
                 '<div class="meta">' + escapeHtml(h.owner) + ' • ' + escapeHtml(h.timeStr || '') + ' (' + escapeHtml(h.device || '') + ')</div>' +
