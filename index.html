@@ -9,6 +9,7 @@
     <title>Kontrola Parkovania</title>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -98,18 +99,18 @@
     <div class="login-box">
         <div style="font-size: 2.4rem; margin-bottom: 6px;">🅿️</div>
         <h2 style="margin: 0 0 16px 0; font-size: 1.3rem;">Kontrola Parkovania</h2>
-        <input type="text" id="login-name" placeholder="Meno" autocomplete="username">
-        <input type="password" id="login-pass" inputmode="numeric" placeholder="Heslo" autocomplete="current-password">
+        <input type="text" id="login-name" placeholder="Meno alebo e-mail" autocomplete="username">
+        <input type="password" id="login-pass" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.60</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.61</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.60</span>
+        <span class="version-tag">v1.61</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -204,8 +205,8 @@
         <details>
             <summary style="cursor:pointer; color: var(--primary); font-weight: 600; font-size: 0.9rem;">🔑 Zmeniť moje heslo</summary>
             <div style="margin-top: 10px;">
-                <input type="password" id="old-pass" inputmode="numeric" placeholder="Aktuálne heslo">
-                <input type="password" id="new-pass" inputmode="numeric" placeholder="Nové heslo">
+                <input type="password" id="old-pass" placeholder="Aktuálne heslo">
+                <input type="password" id="new-pass" placeholder="Nové heslo (min. 6 znakov)">
                 <button class="btn btn-primary" style="margin-bottom:0;" onclick="changeOwnPassword()">Uložiť nové heslo</button>
             </div>
         </details>
@@ -240,9 +241,9 @@
     </div>
 
     <div class="section-box">
-        <h3 style="margin-top:0;">Pridať / upraviť užívateľa</h3>
+        <h3 style="margin-top:0;">Pridať užívateľa</h3>
         <input type="text" id="user-name" placeholder="Meno užívateľa (napr. Jozef)">
-        <input type="password" id="user-pass" inputmode="numeric" placeholder="Heslo">
+        <input type="password" id="user-pass" placeholder="Heslo (min. 6 znakov)">
         <select id="user-role">
             <option value="U">U – Užívateľ (skenovanie a správa áut)</option>
             <option value="A">A – Admin (plné práva + správa užívateľov)</option>
@@ -273,8 +274,6 @@
         appId: "1:974462279794:web:649e27e3e07dbd1b6de2eb"
     };
 
-    const SUPERADMIN_USER = "admin";
-    const SUPERADMIN_PASS = "1719";
     const CONFIG_DOC_ID = "_system_gemini_config";
 
     let db = null;
@@ -286,6 +285,11 @@
     let currentUser = null;
     let isTallFrame = false;
     let selectedAiModule = 'plate';
+
+    let unsubUsers = null;
+    let unsubCars = null;
+    let unsubHist = null;
+    let unsubConfig = null;
 
     let isScanningNow = false;
     let activeAbortController = null;
@@ -415,6 +419,7 @@
             } else {
                 prStatusEl.textContent = '🔴 Plate Recognizer token nie je nastavený';
                 prStatusEl.style.color = '#dc2626';
+                if (prInputEl && !prApiToken) prInputEl.value = '';
             }
         }
 
@@ -428,6 +433,7 @@
             } else {
                 statusEl.textContent = '🔴 Gemini API kľúč nie je nastavený';
                 statusEl.style.color = '#dc2626';
+                if (inputEl && !geminiApiKey) inputEl.value = '';
             }
         }
     }
@@ -456,6 +462,13 @@
         }
     }
 
+    function unsubscribeAll() {
+        if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+        if (unsubCars) { unsubCars(); unsubCars = null; }
+        if (unsubHist) { unsubHist(); unsubHist = null; }
+        if (unsubConfig) { unsubConfig(); unsubConfig = null; }
+    }
+
     window.addEventListener('online', updateConnectionBadge);
     window.addEventListener('offline', updateConnectionBadge);
 
@@ -464,46 +477,96 @@
         db = firebase.firestore();
         db.enablePersistence({ synchronizeTabs: true }).catch(function() {});
 
-        db.collection('app_users').onSnapshot(function(snapshot) {
-            var list = [];
-            snapshot.docs.forEach(function(doc) {
-                if (doc.id === CONFIG_DOC_ID) {
-                    applyCloudConfig(doc.data());
-                } else {
-                    var d = doc.data();
-                    d.id = doc.id;
-                    list.push(d);
+        firebase.auth().onAuthStateChanged(async function(user) {
+            if (user) {
+                try {
+                    var profileDoc = await db.collection('app_users').doc(user.uid).get();
+                    if (!profileDoc.exists) {
+                        document.getElementById('login-error').textContent = 'Účet nemá pridelené oprávnenia.';
+                        await firebase.auth().signOut();
+                        return;
+                    }
+                    var data = profileDoc.data() || {};
+                    currentUser = {
+                        uid: user.uid,
+                        email: user.email,
+                        name: data.name || user.email,
+                        role: data.role || 'U'
+                    };
+                    applyUserSession();
+                    unsubscribeAll();
+
+                    unsubConfig = db.collection('app_users').doc(CONFIG_DOC_ID).onSnapshot(function(doc) {
+                        if (doc.exists) {
+                            applyCloudConfig(doc.data());
+                        }
+                    }, function(err) {
+                        console.error(err);
+                    });
+
+                    unsubCars = db.collection('allowed_cars').onSnapshot(function(snapshot) {
+                        allowedCars = snapshot.docs.map(function(doc) {
+                            var d = doc.data();
+                            d.plate = doc.id;
+                            return d;
+                        });
+                        allowedCars.sort(function(a, b) { return a.plate.localeCompare(b.plate); });
+                        localStorage.setItem('park_cars_cache', JSON.stringify(allowedCars));
+                        renderDB();
+                        updateConnectionBadge();
+                    }, function(err) {
+                        console.error(err);
+                        updateConnectionBadge();
+                    });
+
+                    unsubHist = db.collection('scan_history').orderBy('timestamp', 'desc').limit(150).onSnapshot(function(snapshot) {
+                        scanHistory = snapshot.docs.map(function(doc) {
+                            var d = doc.data();
+                            d.id = doc.id;
+                            return d;
+                        });
+                        localStorage.setItem('park_hist_cache', JSON.stringify(scanHistory));
+                        renderHistory();
+                    }, function(err) {
+                        console.error(err);
+                    });
+
+                    if (currentUser.role === 'A') {
+                        unsubUsers = db.collection('app_users').onSnapshot(function(snapshot) {
+                            var list = [];
+                            snapshot.docs.forEach(function(doc) {
+                                if (doc.id !== CONFIG_DOC_ID) {
+                                    var d = doc.data();
+                                    d.id = doc.id;
+                                    list.push(d);
+                                }
+                            });
+                            appUsers = list;
+                            appUsers.sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+                            localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
+                            renderUsers();
+                        }, function(err) {
+                            console.error(err);
+                        });
+                    } else {
+                        appUsers = [];
+                        renderUsers();
+                    }
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('login-error').textContent = 'Chyba pri načítaní oprávnení účtu.';
+                    await firebase.auth().signOut();
                 }
-            });
-            appUsers = list;
-            appUsers.sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
-            localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
-            renderUsers();
-        });
-
-        db.collection('allowed_cars').onSnapshot(function(snapshot) {
-            allowedCars = snapshot.docs.map(function(doc) {
-                var d = doc.data();
-                d.plate = doc.id;
-                return d;
-            });
-            allowedCars.sort(function(a, b) { return a.plate.localeCompare(b.plate); });
-            localStorage.setItem('park_cars_cache', JSON.stringify(allowedCars));
-            renderDB();
-            updateConnectionBadge();
-        }, function(err) {
-            console.error(err);
-            updateConnectionBadge();
-        });
-
-        db.collection('scan_history').orderBy('timestamp', 'desc').limit(150).onSnapshot(function(snapshot) {
-            scanHistory = snapshot.docs.map(function(doc) {
-                var d = doc.data();
-                d.id = doc.id;
-                return d;
-            });
-            localStorage.setItem('park_hist_cache', JSON.stringify(scanHistory));
-            renderHistory();
+            } else {
+                unsubscribeAll();
+                currentUser = null;
+                geminiApiKey = '';
+                prApiToken = '';
+                localStorage.removeItem('park_gemini_key_cache');
+                localStorage.removeItem('park_pr_token_cache');
+                updateApiKeyUI();
+                document.getElementById('login-screen').style.display = 'flex';
+            }
         });
     } catch (e) {
         updateConnectionBadge();
@@ -515,29 +578,20 @@
     renderUsers();
     updateConnectionBadge();
 
-    var savedSession = sessionStorage.getItem('park_user_v119');
-    if (savedSession) {
-        try {
-            currentUser = JSON.parse(savedSession);
-            applyUserSession();
-        } catch (e) {}
-    }
-
     async function checkLogin() {
         var rawName = document.getElementById('login-name').value.trim();
         var pass = document.getElementById('login-pass').value.trim();
         var errEl = document.getElementById('login-error');
         var btn = document.getElementById('login-btn');
-        var norm = normalizeName(rawName);
 
-        if (!norm || !pass) {
-            errEl.textContent = 'Zadaj meno aj heslo.';
+        if (!rawName || !pass) {
+            errEl.textContent = 'Zadaj meno alebo e-mail a heslo.';
             return;
         }
 
-        if (norm === SUPERADMIN_USER && pass === SUPERADMIN_PASS) {
-            currentUser = { id: 'admin', name: 'admin', pass: SUPERADMIN_PASS, role: 'A', isSuper: true };
-            finishLogin();
+        var email = rawName.indexOf('@') !== -1 ? rawName.trim() : (normalizeName(rawName) + '@parkovanie.local');
+        if (!email || email.indexOf('@') === 0) {
+            errEl.textContent = 'Zadaj platné meno alebo e-mail.';
             return;
         }
 
@@ -545,51 +599,29 @@
         errEl.textContent = 'Overujem...';
 
         try {
-            var found = appUsers.find(function(u) {
-                return (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass;
-            });
-            if (!found && db && navigator.onLine) {
-                var snap = await db.collection('app_users').get();
-                var fetched = [];
-                snap.docs.forEach(function(doc) {
-                    if (doc.id === CONFIG_DOC_ID) {
-                        applyCloudConfig(doc.data());
-                    } else {
-                        var d = doc.data();
-                        d.id = doc.id;
-                        fetched.push(d);
-                    }
-                });
-                appUsers = fetched;
-                localStorage.setItem('park_users_cache', JSON.stringify(appUsers));
-                found = appUsers.find(function(u) {
-                    return (u.id === norm || normalizeName(u.name) === norm) && String(u.pass) === pass;
-                });
-            }
-
-            if (found) {
-                currentUser = { id: found.id, name: found.name, pass: String(found.pass), role: found.role || 'U', isSuper: false };
-                finishLogin();
-            } else {
-                errEl.textContent = navigator.onLine
-                    ? 'Nesprávne meno alebo heslo.'
-                    : 'Účet nie je v offline pamäti alebo je nesprávne heslo.';
-                document.getElementById('login-pass').value = '';
-            }
+            await firebase.auth().signInWithEmailAndPassword(email, pass);
         } catch (e) {
-            errEl.textContent = 'Chyba pri overení účtu.';
+            var code = e && e.code ? e.code : '';
+            if (code === 'auth/user-disabled') {
+                errEl.textContent = 'Tento účet je zablokovaný.';
+            } else if (code === 'auth/too-many-requests') {
+                errEl.textContent = 'Príliš veľa neúspešných pokusov. Skús neskôr.';
+            } else if (code === 'auth/network-request-failed') {
+                errEl.textContent = 'Chyba siete. Skontroluj pripojenie na internet.';
+            } else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-email') {
+                errEl.textContent = 'Nesprávne meno/e-mail alebo heslo.';
+            } else {
+                errEl.textContent = 'Chyba pri prihlásení: ' + (e.message || 'Neznáma chyba');
+            }
+            document.getElementById('login-pass').value = '';
         } finally {
             btn.disabled = false;
         }
     }
 
-    function finishLogin() {
-        document.getElementById('login-error').textContent = '';
-        sessionStorage.setItem('park_user_v119', JSON.stringify(currentUser));
-        applyUserSession();
-    }
-
     function applyUserSession() {
+        document.getElementById('login-error').textContent = '';
+        document.getElementById('login-pass').value = '';
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('current-user-label').textContent = currentUser.name + ' (' + currentUser.role + ')';
         var isAdmin = currentUser.role === 'A';
@@ -600,17 +632,18 @@
         if (clearHistBtn) clearHistBtn.style.display = isAdmin ? 'inline-block' : 'none';
         updateApiKeyUI();
         renderDB();
+        renderHistory();
         renderUsers();
     }
 
-    function logoutApp() {
+    async function logoutApp() {
         stopCamera();
-        sessionStorage.removeItem('park_user_v119');
-        currentUser = null;
         document.getElementById('login-name').value = '';
         document.getElementById('login-pass').value = '';
         document.getElementById('login-error').textContent = '';
-        document.getElementById('login-screen').style.display = 'flex';
+        try {
+            await firebase.auth().signOut();
+        } catch (e) {}
         switchTab('scan', document.querySelector('nav button'));
     }
 
@@ -656,29 +689,46 @@
         var role = document.getElementById('user-role').value;
         var norm = normalizeName(name);
 
-        if (!norm || norm === SUPERADMIN_USER || norm === CONFIG_DOC_ID) {
-            return alert('Zadaj platné meno (meno admin je vyhradené).');
+        if (!norm || norm === CONFIG_DOC_ID) {
+            return alert('Zadaj platné meno.');
         }
-        if (pass.length < 3) return alert('Heslo musí mať aspoň 3 znaky.');
+        if (pass.length < 6) return alert('Heslo musí mať aspoň 6 znakov.');
 
-        db.collection('app_users').doc(norm).set({
-            name: name,
-            pass: pass,
-            role: role
-        });
-        document.getElementById('user-name').value = '';
-        document.getElementById('user-pass').value = '';
-        alert('Užívateľ uložený: ' + name);
+        var email = norm + '@parkovanie.local';
+        var secApp = firebase.apps.find(function(a) { return a.name === 'Secondary'; }) || firebase.initializeApp(firebaseConfig, 'Secondary');
+
+        try {
+            var cred = await secApp.auth().createUserWithEmailAndPassword(email, pass);
+            await db.collection('app_users').doc(cred.user.uid).set({
+                name: name,
+                email: email,
+                role: role
+            });
+            document.getElementById('user-name').value = '';
+            document.getElementById('user-pass').value = '';
+            alert('Užívateľ uložený: ' + name);
+        } catch (e) {
+            var code = e && e.code ? e.code : '';
+            if (code === 'auth/email-already-in-use') {
+                alert('Užívateľ s týmto menom už existuje.');
+            } else if (code === 'auth/weak-password') {
+                alert('Heslo musí mať aspoň 6 znakov.');
+            } else {
+                alert('Chyba pri ukladaní užívateľa: ' + (e.message || 'Neznáma chyba'));
+            }
+        } finally {
+            try {
+                await secApp.auth().signOut();
+            } catch (err) {}
+        }
     }
 
     async function removeUser(encodedId, encodedName) {
         if (!currentUser || currentUser.role !== 'A') return;
         var id = decodeURIComponent(encodedId);
         var name = decodeURIComponent(encodedName);
-        var p = prompt('Zadaj svoje heslo pre potvrdenie zmazania:');
-        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
-        if (confirm('Zmazať užívateľa ' + name + '?')) {
-            db.collection('app_users').doc(id).delete();
+        if (confirm('Naozaj zmazať užívateľa ' + name + '?')) {
+            await db.collection('app_users').doc(id).delete();
         }
     }
 
@@ -686,8 +736,9 @@
         var list = document.getElementById('users-list');
         var countEl = document.getElementById('users-count');
         if (!list) return;
+        var currentUid = currentUser ? currentUser.uid : '';
         var visibleUsers = appUsers.filter(function(u) {
-            return u.id !== SUPERADMIN_USER && u.id !== CONFIG_DOC_ID;
+            return u.id !== currentUid && u.id !== CONFIG_DOC_ID;
         });
         countEl.textContent = visibleUsers.length;
         list.innerHTML = visibleUsers.map(function(u) {
@@ -703,18 +754,30 @@
 
     async function changeOwnPassword() {
         if (!currentUser) return;
-        if (currentUser.isSuper) return alert('Heslo účtu admin sa mení iba v zdrojovom kóde.');
+        var authUser = firebase.auth().currentUser;
+        if (!authUser) return alert('Nie si prihlásený.');
         var oldP = document.getElementById('old-pass').value.trim();
         var newP = document.getElementById('new-pass').value.trim();
-        if (oldP !== currentUser.pass) return alert('Aktuálne heslo nie je správne.');
-        if (newP.length < 3) return alert('Nové heslo musí mať aspoň 3 znaky.');
+        if (!oldP) return alert('Zadaj aktuálne heslo.');
+        if (newP.length < 6) return alert('Nové heslo musí mať aspoň 6 znakov.');
 
-        db.collection('app_users').doc(currentUser.id).update({ pass: newP });
-        currentUser.pass = newP;
-        sessionStorage.setItem('park_user_v119', JSON.stringify(currentUser));
-        document.getElementById('old-pass').value = '';
-        document.getElementById('new-pass').value = '';
-        alert('Heslo bolo úspešne zmenené.');
+        try {
+            var cred = firebase.auth.EmailAuthProvider.credential(authUser.email, oldP);
+            await authUser.reauthenticateWithCredential(cred);
+            await authUser.updatePassword(newP);
+            document.getElementById('old-pass').value = '';
+            document.getElementById('new-pass').value = '';
+            alert('Heslo bolo úspešne zmenené.');
+        } catch (e) {
+            var code = e && e.code ? e.code : '';
+            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+                alert('Aktuálne heslo nie je správne.');
+            } else if (code === 'auth/weak-password') {
+                alert('Nové heslo je príliš slabé (min. 6 znakov).');
+            } else {
+                alert('Chyba pri zmene hesla: ' + (e.message || 'Neznáma chyba'));
+            }
+        }
     }
 
     function normalizePlate(str) {
@@ -1194,11 +1257,6 @@
 
     function removeCar(encodedPlate) {
         var plate = decodeURIComponent(encodedPlate);
-        var p = prompt('Zadaj svoje heslo pre zmazanie auta ' + plate + ':');
-        if (!p) return;
-        if (!currentUser || (p !== currentUser.pass && p !== SUPERADMIN_PASS)) {
-            return alert('Nesprávne heslo.');
-        }
         if (confirm('Naozaj odstrániť ' + plate + ' zo zoznamu?')) {
             if (db) db.collection('allowed_cars').doc(plate).delete();
         }
@@ -1251,8 +1309,6 @@
 
     async function clearDB() {
         if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
-        var p = prompt('Zadaj heslo Admina:');
-        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (!confirm('Naozaj vymazať VŠETKY povolené autá?')) return;
         for (var i = 0; i < allowedCars.length; i += 400) {
             var batch = db.batch();
@@ -1338,8 +1394,6 @@
 
     async function clearHistory() {
         if (!currentUser || currentUser.role !== 'A') return alert('Prístup len pre Admina.');
-        var p = prompt('Zadaj heslo Admina:');
-        if (p !== currentUser.pass && p !== SUPERADMIN_PASS) return alert('Nesprávne heslo.');
         if (!confirm('Naozaj vymazať celú históriu kontrol?')) return;
         if (db) {
             while (true) {
