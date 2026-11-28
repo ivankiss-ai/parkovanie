@@ -103,14 +103,14 @@
         <input type="password" id="login-pass" placeholder="Heslo" autocomplete="current-password">
         <button id="login-btn" class="btn btn-primary" onclick="checkLogin()">Prihlásiť sa</button>
         <div id="login-error" style="color: var(--danger); font-size: 0.85rem; min-height: 20px; margin-top: 4px;"></div>
-        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.61</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 10px;">Verzia v1.62</div>
     </div>
 </div>
 
 <header>
     <div class="header-left">
         <span id="header-title">Skenovanie ŠPZ</span>
-        <span class="version-tag">v1.61</span>
+        <span class="version-tag">v1.62</span>
     </div>
     <div class="header-right">
         <span id="sync-status" class="sync-badge">⏳ Pripájam...</span>
@@ -201,7 +201,7 @@
 
 <div id="tab-history" class="tab">
     <div class="section-box">
-        <div style="font-size: 0.9rem; margin-bottom: 10px;">Prihlásený užívateľ: <strong id="current-user-label">—</strong></div>
+        <div style="font-size: 0.9rem; margin-bottom: 10px;">Prihlásený: <strong id="current-user-label">—</strong></div>
         <details>
             <summary style="cursor:pointer; color: var(--primary); font-weight: 600; font-size: 0.9rem;">🔑 Zmeniť moje heslo</summary>
             <div style="margin-top: 10px;">
@@ -623,7 +623,7 @@
         document.getElementById('login-error').textContent = '';
         document.getElementById('login-pass').value = '';
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('current-user-label').textContent = currentUser.name + ' (' + currentUser.role + ')';
+        document.getElementById('current-user-label').textContent = currentUser.name + ' • Rola: ' + (currentUser.role === 'A' ? 'Admin (A)' : 'Užívateľ (U)');
         var isAdmin = currentUser.role === 'A';
         document.querySelectorAll('.admin-only').forEach(function(el) {
             el.style.display = isAdmin ? (el.tagName === 'BUTTON' ? 'flex' : 'block') : 'none';
